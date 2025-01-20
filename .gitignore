@@ -1,0 +1,43 @@
+# Ignore .env file containing sensitive information
+.env
+
+# Python bytecode files
+*.pyc
+*.pyo
+__pycache__/
+
+# Virtual environment folders
+venv/
+.venv/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE or editor-specific files
+.vscode/
+.idea/
+
+# Logs and temporary files
+*.log
+*.sqlite3
+
+# Cache and build directories
+*.egg-info/
+.eggs/
+*.cache/
+*.pytest_cache/
+dist/
+build/
+
+# Other specific secrets or configs
+config.json
+secrets.json
+
+# Ignore all files with personal data or credentials
+*.key
+*.pem
+*.crt
