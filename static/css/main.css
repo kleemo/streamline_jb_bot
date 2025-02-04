@@ -1,0 +1,138 @@
+h2{
+    margin-bottom: 1rem;
+}
+
+#vm {
+    width: 100vw;
+}
+
+#header {
+    overflow: auto;
+    position: fixed;
+    background: white;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    justify-content: space-between;
+    align-content: space-between;
+    padding: 10px;
+    z-index: 100;
+}
+
+#header h1 {
+    float: left;
+    font-size: 25px;
+    font-style: italic;
+    font-weight: 900;
+}
+
+#header .icon {
+    cursor: pointer;
+    animation-name: wave-animation;  /* Refers to the name of your @keyframes element below */
+    animation-duration: 2.5s;        /* Change to speed up or slow down */
+    animation-iteration-count: infinite;  /* Never stop waving :) */
+    transform-origin: 50% 50%;       /* Pivot around the bottom-left palm */
+    width: 100%;
+}
+
+@keyframes wave-animation {
+    0% { transform: rotate( 0.0deg) }
+    10% { transform: rotate(1.0deg) }  /* The following five values can be played with to make the waving more or less extreme */
+    20% { transform: rotate(-2.0deg) }
+    30% { transform: rotate(1.0deg) }
+    40% { transform: rotate(-2.0deg) }
+    50% { transform: rotate(2.0deg) }
+    60% { transform: rotate( 0.0deg) }  /* Reset for the last half to pause */
+    100% { transform: rotate( 0.0deg) }
+}
+
+input {
+    width: 100%;
+    font-size: 16px;
+}
+
+input[type=checkbox], input[type=radio] {
+    width: auto;
+}
+
+.text-input {
+    float: left;
+    font-size: 16px;
+    font-style: italic;
+    font-weight: 900;
+    /* overflow: visible; */
+    height: 30px;
+    width: auto;
+}
+
+#motion {
+    width: 100%;
+    font-size: 50px;
+    line-height: 50px;
+    cursor: pointer;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+#motion div {
+    padding: 0 10px;
+}
+
+p {
+    margin: 0.75rem 0 0.5rem 0;
+}
+
+#control {
+    padding-bottom: 20px;
+}
+
+#sidebar {
+    background-color: #68f503;
+    padding: 160px 10px 10px 10px;
+    width: 100%;
+}
+
+#sidebar::-webkit-scrollbar {
+    display: none;
+}
+
+#options {
+    padding: 20px 0;
+    border-top: 4px solid black;
+}
+
+#buttons{
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    justify-content: space-evenly;
+    margin-bottom: 1rem;
+}
+
+button {
+    background-color: black;
+    border: none;
+    color: white;
+    padding: 5px 25px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+}
+
+/*.toolpath{
+    display: none;
+}*/
+
+.vue-range-slider.slider-component{
+    padding: 0 !important;
+}
+
+.shape, .toolpath{
+    margin-top: 1rem;
+    padding: 0.5rem 0;
+    border-top: 1px dotted black;
+}
