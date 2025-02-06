@@ -94,6 +94,7 @@ if __name__ == "__main__":
     baud = 115200
 
     # setup
+    print("Testing DefaultUSBHandler")
     print_handler = DefaultUSBHandler(port, baud)
 
     # main test

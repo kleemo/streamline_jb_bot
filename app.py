@@ -13,7 +13,7 @@ import shapehandler
 import slicerhandler
 import point_calc as pc
 
-from telegram_bot.handlers import telegram_webhook
+from telegram_bot.handlers import send_message_to_telegram, fetch_image, check_location
 
 port = 'COM3'
 # port = '/dev/tty.usbmodem14101' # use this port value for Aurelian
@@ -40,11 +40,41 @@ def index():
     return render_template('index.html')
 
 @app.route('/webhook', methods=['POST'])
-def webhook():
-    return telegram_webhook(request)
+def telegram_webhook():
+    #Endpoint to receive updates from Telegram.
+    update = request.json  # Get the JSON payload from Telegram
+    if 'message' in update:
+        chat_id = update['message']['chat']['id']
+
+        if "text" in update["message"]:
+            text = update['message']['text']
+            print(f"Received message from {chat_id}: {text}")
+            send_message_to_telegram(chat_id, f"You said: {text}")
+
+        if "photo" in update["message"]:
+            print("photo received")
+            photo_sizes = update["message"]["photo"]  # List of photo sizes
+            file_id = photo_sizes[-1]["file_id"]
+            encoded_file = fetch_image(file_id)
+            
+            arr_str = "\n".join(map(str, encoded_file))
+            send_message_to_telegram(chat_id,"you send a photo: " + arr_str )
+
+        if "location" in update["message"]:
+            location = update["message"]["location"]
+            longitude = location["longitude"]
+            position = check_location(longitude)
+            print(f"Received location from {chat_id}: ({position})")
+            send_message_to_telegram(chat_id, f"Received your location: ({position}) from toni")
+            shape_handler.params_toolpath['grow'] = position
+            socketio.emit('toolpath_options',shape_handler.params_toolpath)
+        
+
+    return '', 200  # Respond with a 200 status to acknowledge the update
 
 @socketio.on('hello')
 def hello():
+    print("hello socket")
     emit('layer', { 'layer': layer })
     emit('slicer_options', {
         'extrusion_rate': slicer_handler.params['extrusion_rate'],
@@ -67,12 +97,14 @@ def hello():
 
 @socketio.on('slicer_options')
 def slicer_options(data):
+    print("slicer_options socket")
     slicer_handler.params['extrusion_rate'] = data["extrusion_rate"]
     slicer_handler.params['feed_rate'] = data["feed_rate"]
     slicer_handler.params['layer_hight'] = data["layer_hight"]
 
 @socketio.on('toolpath_options')
 def toolpath_options(data):
+    print("toolpath_options socket")
     global magnitude, diameter, numlines, linelength, rotation_goal, rotation_increment, rotation_degree, center_points, grow
 
     shape_handler.params_toolpath['mag_goal'] = data["magnitude"]
@@ -98,28 +130,33 @@ def toolpath_options(data):
 
 @socketio.on('layer')
 def setLayer(data):
+    print("layer socket")
     global layer
     layer = int(data["layer"])
 
 @socketio.on('toolpath_type')
 def setToolpath(data):
+    print("toolpath_type socket")
     global tooplpath_type
     tooplpath_type = data["toolpath_type"]
     print(str(tooplpath_type))
 
 @socketio.on('printer_connect')
 def printer_connect(port, baud):
+    print("printer_connect socket")
     print("connect")
     if print_handler.connect(port, int(baud)):
         emit('connected', {'connected': True})
 
 @socketio.on('printer_disconnect')
 def printer_disconnect():
+    print("printer_disconnect socket")
     print_handler.disconnect()
     emit('connected', {'connected': False})
 
 @socketio.event
 def layer_to_zero():
+    print("layer_to_zero socket")
     global layer
     layer = 0
     emit('layer', {'layer': layer})
@@ -127,6 +164,7 @@ def layer_to_zero():
 #reset printer postition and settings
 @socketio.on('printer_setup')
 def printer_setup():
+    print("printer_setup socket")
     print_handler.send(["G90", "M104 S210", "G28", "G91", "G1 Z10", "G90"])
     global layer
     global height
@@ -139,18 +177,21 @@ def printer_setup():
 
 @socketio.on('move_up')
 def printer_up():
+    print("move_up socket")
     print_handler.send(["G91", "G1 Z10", "G90"])
     while print_handler.is_printing():
         time.sleep(0.1)
 
 @socketio.on('move_down')
 def printer_down():
+    print("move_down socket")
     print_handler.send(["G91", "G1 Z-10", "G90"])
     while print_handler.is_printing():
         time.sleep(0.1)
 
 @socketio.on('printer_pause_resume')
 def printer_pause_resume():
+    print("printer_pause_resume socket")
     global toggle_state
     global printing
     if not toggle_state:  # If currently printing (even count of button clicks)
@@ -178,6 +219,7 @@ def zero_layer():
 
 @socketio.on('start_print')
 def start_print(data, wobble):
+    print("start_print socket")
     global printing
     global toggle_state
 
@@ -246,6 +288,10 @@ def start_print(data, wobble):
     print_handler.send(slicer_handler.end())
 
 # entry point when running the app. Must be called at the end of the script
+def test():
+    print("test")
+    data = {"toolpath_type": "wave"}
+    socketio.emit('toolpath_type', data)
 if __name__ == '__main__':
     socketio.run(app)
 

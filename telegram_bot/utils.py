@@ -26,3 +26,13 @@ def image_encoder(image_url):
         print("data transformed")
 
         return transformed_data[0] #return image encoded with 10 variables
+
+def check_location(longitude):
+    lon_ref = 8.32443 #reference longitude toni areal
+    threshold = 0.007
+    if abs(longitude - lon_ref) < threshold:
+        return "center"
+    if longitude < lon_ref:
+        return "left" #west
+    else:
+        return "right" #east

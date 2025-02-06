@@ -12,7 +12,7 @@ socket.on('slicer_options', (data) => {
     vm.slicer_options = data
 });
 socket.on('toolpath_options', (data) => {
-    console.log(data)
+    //console.log(data)
     vm.toolpath_options = data
 });
 
