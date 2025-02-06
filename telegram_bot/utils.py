@@ -1,6 +1,7 @@
 from skimage.io import imread
 from skimage.transform import resize
 import joblib
+import numpy as np
 
 def image_encoder(image_url):
         img = imread(image_url, as_gray=True)
@@ -27,6 +28,15 @@ def image_encoder(image_url):
 
         return transformed_data[0] #return image encoded with 10 variables
 
+def map_brightness_to_value(image_url, min, max):
+    img = imread(image_url, as_gray=True)
+    # Calculate the average brightness (pixel intensity ranges from 0 to 1)
+    avg_brightness = np.mean(img)
+    # Map the average brightness to a value between min and max
+    value = min + (max - min) * avg_brightness
+    value = round(value)
+    return value
+
 def check_location(longitude):
     lon_ref = 8.32443 #reference longitude toni areal
     threshold = 0.007
@@ -36,3 +46,23 @@ def check_location(longitude):
         return "left" #west
     else:
         return "right" #east
+    
+def map_topic_to_pattern(text):
+     vecotrizer = joblib.load("models\Text_vectorizer.pkl")
+     text = vecotrizer.transform([text])
+     topic_extractor = joblib.load("models\Topic_extractor.pkl")
+     topic_list = topic_extractor.transform(text)[0]
+     topic_nr = np.argmax(topic_list) + 1
+
+     if topic_nr == 4:
+         return "jagged", topic_nr
+     elif topic_nr == 5:
+         return "rectangle", topic_nr 
+     elif topic_nr == 8:
+         return "loop", topic_nr
+     elif topic_nr == 9:
+         return "cross_stitch", topic_nr
+     elif topic_nr == 10:    
+         return "wave", topic_nr
+     else:
+         return "straight", topic_nr

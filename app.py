@@ -14,6 +14,7 @@ import slicerhandler
 import point_calc as pc
 
 from telegram_bot.handlers import send_message_to_telegram, fetch_image, check_location
+from telegram_bot.utils import image_encoder, map_brightness_to_value, map_topic_to_pattern
 
 port = 'COM3'
 # port = '/dev/tty.usbmodem14101' # use this port value for Aurelian
@@ -30,6 +31,7 @@ tooplpath_type = "straight"
 grow =  "center"
 printing = False
 toggle_state = False
+location_rec = False
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
@@ -45,29 +47,39 @@ def telegram_webhook():
     update = request.json  # Get the JSON payload from Telegram
     if 'message' in update:
         chat_id = update['message']['chat']['id']
+        global location_rec
 
         if "text" in update["message"]:
             text = update['message']['text']
-            print(f"Received message from {chat_id}: {text}")
-            send_message_to_telegram(chat_id, f"You said: {text}")
+            pattern, topic = map_topic_to_pattern(text)
+            socketio.emit('toolpath_type', { 'toolpath_type': pattern })
+            send_message_to_telegram(chat_id, f"You said something from topic : {topic}")
 
         if "photo" in update["message"]:
             print("photo received")
             photo_sizes = update["message"]["photo"]  # List of photo sizes
             file_id = photo_sizes[-1]["file_id"]
-            encoded_file = fetch_image(file_id)
-            
-            arr_str = "\n".join(map(str, encoded_file))
-            send_message_to_telegram(chat_id,"you send a photo: " + arr_str )
+            image_url = fetch_image(file_id)
+            if location_rec:
+                brightnes_level = map_brightness_to_value(image_url, 2, 6)
+                shape_handler.params_toolpath["numlines"] = brightnes_level
+            else:
+                brightnes_level = map_brightness_to_value(image_url, 1, 4)
+                shape_handler.params_toolpath["center_points"] = brightnes_level
+
+            socketio.emit('toolpath_options',shape_handler.params_toolpath)
+            send_message_to_telegram(chat_id,"you send a photo with brightness value: " + str(brightnes_level))
 
         if "location" in update["message"]:
             location = update["message"]["location"]
             longitude = location["longitude"]
             position = check_location(longitude)
             print(f"Received location from {chat_id}: ({position})")
-            send_message_to_telegram(chat_id, f"Received your location: ({position}) from toni")
             shape_handler.params_toolpath['grow'] = position
             socketio.emit('toolpath_options',shape_handler.params_toolpath)
+            send_message_to_telegram(chat_id, f"Received your location: ({position}) from toni")
+
+            location_rec = True
         
 
     return '', 200  # Respond with a 200 status to acknowledge the update

@@ -26,6 +26,6 @@ def fetch_image(file_id):
     if "result" in file_info:
         file_path = file_info["result"]["file_path"]
         file_url = f"https://api.telegram.org/file/bot{TELEGRAM_BOT_TOKEN}/{file_path}"
-        encoded_file = image_encoder(file_url)
-        return encoded_file  # Return encoded image
+        
+        return file_url  # Return image url
     return None
