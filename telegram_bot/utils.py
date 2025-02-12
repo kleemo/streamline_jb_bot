@@ -3,6 +3,7 @@ from skimage.transform import resize
 import joblib
 import numpy as np
 
+# this file should be replaced by the classes in the same folder
 def image_encoder(image_url):
         img = imread(image_url, as_gray=True)
         print("imgage loaded ")
@@ -66,3 +67,5 @@ def map_topic_to_pattern(text):
          return "wave", topic_nr
      else:
          return "straight", topic_nr
+
+ 

@@ -405,3 +405,37 @@ class Shapehandler:
                 scope_count = scope_count + 1
         
         return new_points
+    
+    def pyramide(self, layer, pattern): 
+        # pyramide shape
+        size = self.params_toolpath["linelength"]
+        shrinking_factor = layer*0.5
+        points = []
+        points.append(pc.point(0+shrinking_factor, 0+shrinking_factor, 0))
+        points.append(pc.point(size-shrinking_factor, 0+shrinking_factor, 0))
+        points.append(pc.point(size-shrinking_factor, size-shrinking_factor, 0))
+        points.append(pc.point(0+shrinking_factor, size-shrinking_factor, 0))
+        points.append(pc.point(0+shrinking_factor, 0+shrinking_factor, 0))
+
+        if (pattern == "rectangle"):
+            self.params_toolpath["magnitude"] = size - 2*shrinking_factor
+            self.add_rectangle_line(points, 0+shrinking_factor, 0+shrinking_factor, 1, size-2*shrinking_factor)
+
+        if pattern == "loop":
+            loop_radius = 2
+            self.params_toolpath["magnitude"] = loop_radius
+            num_lines = (size-2*shrinking_factor) // (2 * loop_radius)
+            print("loop printing 00 " + str(num_lines))
+            for i in range(int(num_lines)):
+                direction = 1
+                x_start = 0+shrinking_factor + loop_radius
+                if i % 2 == 1:
+                    x_start = size-shrinking_factor - loop_radius
+                    direction = -1
+
+                y_start = 0+shrinking_factor + loop_radius + i * 2 * loop_radius
+                self.add_loop_line(points, x_start, y_start, direction, size-2*shrinking_factor)
+            
+
+        
+        return points

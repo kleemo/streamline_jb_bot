@@ -47,9 +47,6 @@
 				<div>
 					<div class="options">
 						<h2>Options</h2>
-						<label v-if="synced_to_bot == true" for="checkbox">syncronized to bot</label>
-						<label v-else for="checkbox">not syncronized to bot</label>
-						<input type="checkbox" class="checkbox" v-model="synced_to_bot">
 						<p>Center of the printer plate:</p>
 						<input v-model="plate_center_x">
 						<input style="margin: 0.5rem 0 1rem 0;" v-model="plate_center_y">
@@ -69,27 +66,9 @@
 					</div>
 					<div class="shape">
 						<h4>Shapes</h4>
-						<p>Nr. of Lines: [[ parseInt(toolpath_options.numlines) ]]</p>
-						<vue-range-slider :tooltip="null" :min="2" :max="6" :step="2" ref="slider"
-							v-model="toolpath_options.numlines"></vue-range-slider>
-						<p>Radius: [[ parseInt(toolpath_options.diameter) ]]</p>
-						<vue-range-slider :tooltip="null" :min="2" :max="8" :step="1" ref="slider"
-							v-model="toolpath_options.diameter"></vue-range-slider>
 						<p>Line Length: [[ parseInt(toolpath_options.linelength) ]]</p>
 						<vue-range-slider :tooltip="null" :min="20" :max="60" :step="5" ref="slider"
 							v-model="toolpath_options.linelength"></vue-range-slider>
-						<p>Center Points: [[ parseInt(toolpath_options.center_points) ]]</p>
-						<vue-range-slider :tooltip="null" :min="1" :max="4" :step="1" ref="slider"
-							v-model="toolpath_options.center_points"></vue-range-slider>
-						<p>Rotation Degree: [[ parseInt(toolpath_options.rotation_degree) ]]</p>
-						<vue-range-slider :tooltip="null" :min="-180" :max="180" :step="2" ref="slider"
-							v-model="toolpath_options.rotation_degree"></vue-range-slider>
-						<br>
-						<select name="Grow" class="grow-control form-control" v-model="toolpath_options.grow">
-							<option value="center">Center</option>
-							<option value="left">Left</option>
-							<option value="right">Right</option>
-						</select>
 					</div>
 					<div class="toolpath">
 						<h4>Pattern</h4>
@@ -101,9 +80,6 @@
 							<option value="rectangle">Rectangle</option>
 							<option value="cross_stitch">Cross Stitch</option>
 						</select>
-						<p>Intensity: [[ toolpath_options.magnitude ]]</p>
-						<vue-range-slider :tooltip="null" :min="1" :max="10" :step="0.5" ref="slider"
-							v-model="toolpath_options.magnitude"></vue-range-slider>
 					</div>
 				</div>
 			</div>

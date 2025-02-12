@@ -13,8 +13,10 @@ import shapehandler
 import slicerhandler
 import point_calc as pc
 
-from telegram_bot.handlers import send_message_to_telegram, fetch_image, check_location
-from telegram_bot.utils import image_encoder, map_brightness_to_value, map_topic_to_pattern
+from telegram_bot.handlers import send_message_to_telegram, fetch_image, get_openai_response, analyze_image_with_openai
+from telegram_bot.utils import image_encoder, map_brightness_to_value
+import telegram_bot.locationhandler
+import telegram_bot.parametershandler
 
 port = 'COM3'
 # port = '/dev/tty.usbmodem14101' # use this port value for Aurelian
@@ -25,13 +27,16 @@ print_handler = DefaultUSBHandler(port, baud)
 slicer_handler = slicerhandler.Slicerhandler()
 shape_handler = shapehandler.Shapehandler()
 
+location_handler = telegram_bot.locationhandler.LocationHandler()
+parameter_handler = telegram_bot.parametershandler.ParametersHandler("straight")
+
 layer = 0
 height = 0
+height_max = 0
 tooplpath_type = "straight"
 grow =  "center"
 printing = False
 toggle_state = False
-location_rec = False
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
@@ -45,41 +50,43 @@ def index():
 def telegram_webhook():
     #Endpoint to receive updates from Telegram.
     update = request.json  # Get the JSON payload from Telegram
+    global height_max
+    global printing
+    global toggle_state
     if 'message' in update:
         chat_id = update['message']['chat']['id']
-        global location_rec
 
         if "text" in update["message"]:
             text = update['message']['text']
-            pattern, topic = map_topic_to_pattern(text)
-            socketio.emit('toolpath_type', { 'toolpath_type': pattern })
+            topic = parameter_handler.map_topic_to_pattern(text)
+            ai_response = get_openai_response(text)
+        
             send_message_to_telegram(chat_id, f"You said something from topic : {topic}")
+            send_message_to_telegram(chat_id, f"OpenAI response: {ai_response}")
 
         if "photo" in update["message"]:
             print("photo received")
             photo_sizes = update["message"]["photo"]  # List of photo sizes
             file_id = photo_sizes[-1]["file_id"]
             image_url = fetch_image(file_id)
-            if location_rec:
-                brightnes_level = map_brightness_to_value(image_url, 2, 6)
-                shape_handler.params_toolpath["numlines"] = brightnes_level
-            else:
-                brightnes_level = map_brightness_to_value(image_url, 1, 4)
-                shape_handler.params_toolpath["center_points"] = brightnes_level
-
-            socketio.emit('toolpath_options',shape_handler.params_toolpath)
+            #ai_response = analyze_image_with_openai(image_url)
+            brightnes_level = map_brightness_to_value(image_url, 1, 10)
             send_message_to_telegram(chat_id,"you send a photo with brightness value: " + str(brightnes_level))
+            #send_message_to_telegram(chat_id, f"OpenAI response: {ai_response}")
 
         if "location" in update["message"]:
             location = update["message"]["location"]
-            longitude = location["longitude"]
-            position = check_location(longitude)
-            print(f"Received location from {chat_id}: ({position})")
-            shape_handler.params_toolpath['grow'] = position
-            socketio.emit('toolpath_options',shape_handler.params_toolpath)
-            send_message_to_telegram(chat_id, f"Received your location: ({position}) from toni")
+            dist = location_handler.handle_location(location)
+            if dist > 0:
+                height_max += (dist*1000)
+                if printing != True:
+                    toggle_state = True
+                    socketio.emit('toolpath_type', { 'toolpath_type': parameter_handler.get_pattern() })
+                    socketio.emit('printer_pause_resume')
+            #print("Emitting start_print event")
+            #socketio.emit('trigger_print')
+            send_message_to_telegram(chat_id, f"Received your location with distance to previous location: ({dist})")
 
-            location_rec = True
         
 
     return '', 200  # Respond with a 200 status to acknowledge the update
@@ -93,18 +100,8 @@ def hello():
         'feed_rate': slicer_handler.params['feed_rate'],
         'layer_hight': slicer_handler.params['layer_hight'],
     })
-    emit('toolpath_type', { 'toolpath_type': tooplpath_type })
     emit('toolpath_options', {
-        'transformation_factor': shape_handler.params_toolpath['transformation_factor'],
-        'magnitude': shape_handler.params_toolpath['magnitude'],
-        'wave_lenght': shape_handler.params_toolpath['wave_lenght'],
-        'rasterisation': shape_handler.params_toolpath['rasterisation'],
-        'diameter': shape_handler.params_toolpath['diameter'],
-        'numlines': shape_handler.params_toolpath['numlines'],
-        'center_points': shape_handler.params_toolpath['center_points'],
-        'linelength': shape_handler.params_toolpath['linelength'],
-        'rotation_degree': shape_handler.params_toolpath['rotation_degree'],
-        'grow': shape_handler.params_toolpath['grow'],
+        'linelength': shape_handler.params_toolpath['linelength']
     })
 
 @socketio.on('slicer_options')
@@ -117,27 +114,7 @@ def slicer_options(data):
 @socketio.on('toolpath_options')
 def toolpath_options(data):
     print("toolpath_options socket")
-    global magnitude, diameter, numlines, linelength, rotation_goal, rotation_increment, rotation_degree, center_points, grow
-
-    shape_handler.params_toolpath['mag_goal'] = data["magnitude"]
-    magnitude = data["magnitude"]
-
-    rotation_goal = data["rotation_degree"]
-    rotation_increment = data.get("rotation_increment", 2)
-
-    shape_handler.params_toolpath['rotation_goal'] = data["rotation_degree"]
-    rotation_degree = data["rotation_degree"]
-
-    shape_handler.params_toolpath['wave_lenght'] = data["wave_lenght"]
-    shape_handler.params_toolpath['rasterisation'] = data["rasterisation"]
-
-    shape_handler.params_toolpath['dia_goal'] = data["diameter"]
-    diameter = data["diameter"]
-
-    numlines = data["numlines"]
-    linelength = data["linelength"]
-    center_points = data["center_points"]
-    grow = data["grow"]
+    shape_handler.params_toolpath["linelength"] = data["linelength"]
     print(shape_handler.params_toolpath, data)
 
 @socketio.on('layer')
@@ -250,10 +227,6 @@ def start_print(data, wobble):
     emit('printer_status', {'status': 'printing'})
     print("Print job started.")
 
-    shape_handler.params_toolpath['magnitude'] = shape_handler.params_toolpath["mag_goal"]
-    shape_handler.params_toolpath['diameter'] = shape_handler.params_toolpath["dia_goal"]
-    shape_handler.params_toolpath['rotation_degree'] = shape_handler.params_toolpath["rotation_goal"]
-
     print_handler.send(slicer_handler.start())
 
     while print_handler.is_printing():
@@ -261,22 +234,23 @@ def start_print(data, wobble):
 
     global layer
     global height
+    global height_max
     global tooplpath_type
 
     angle = 0
-
     while printing:
 
         #Set Machine Height
-        if(height > 150):
-            printing = False
+        if(height >= height_max):
+            emit('printer_pause_resume')
+            #printing = False
 
         wobbler = wobble
         angle = angle + random.randint(-wobbler, wobbler)
 
         # create the shape points
         # points = shape_handler.generate_spiral(circumnavigations, shape, diameter, centerpoints)
-        points = shape_handler.generate_snail_shape(numlines, linelength, diameter, tooplpath_type, center_points, rotation_degree, grow)
+        points = shape_handler.pyramide(layer, tooplpath_type)
 
         repetitions = 1
         for i in range(repetitions):
@@ -284,26 +258,26 @@ def start_print(data, wobble):
             gcode = slicer_handler.create(height, points)
             print_handler.send(gcode)
 
-            while (print_handler.is_printing() or print_handler.is_paused()):
-                time.sleep(0.1)
-                print(print_handler.status())
+            time.sleep(3)  # Wait 3 seconds
+            while (print_handler.is_printing() or print_handler.is_paused() or not printing):
+                time.sleep(2)
+                print("while loop print")
+                #print(print_handler.status())
 
             # update layer height
             layer = layer + 1
             height = height + slicer_handler.params['layer_hight']
             emit('layer', {'layer': layer}) #"We are on Layer" – Output
 
-            time.sleep(3)  # Wait 3 seconds
+            
+            
 
             
         print("height = " + str(height))
-    print_handler.send(slicer_handler.end())
+        print("layer = " + str(layer))
+    #print_handler.send(slicer_handler.end())
 
 # entry point when running the app. Must be called at the end of the script
-def test():
-    print("test")
-    data = {"toolpath_type": "wave"}
-    socketio.emit('toolpath_type', data)
 if __name__ == '__main__':
     socketio.run(app)
 

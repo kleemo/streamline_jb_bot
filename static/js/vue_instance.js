@@ -35,15 +35,7 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             layer_hight: 1.5
         },
         toolpath_options: {
-            magnitude: 5,
-            wave_lenght: 0,
-            rasterisation: 0,
-            diameter: 10,
-            linelength: 50,
-            numlines: 4,
-            center_points: 4,
-            rotation_degree: 0,
-            grow: "center"
+            linelength: 50
         },
         toolpath_type: "straight",
         plate_center_x: 100,
@@ -94,64 +86,6 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         },
     },
     methods: {
-        poll () {
-            this.polling = setInterval(() => {
-                // this.slicer_options.extrusion_rate += 0.01
-
-                // fetch("https://api2.binance.com/api/v3/ticker/price", {
-                //     "method": "GET",
-                //     "headers": {}
-                // })
-                // .then(async response => {
-                //     const data = await response.json();
-                //     this.eth.last = this.eth.current
-                //     this.eth.current = data.filter(element => element.symbol == "ETHEUR")[0].price
-                //     output = this.scale(this.eth.current - this.eth.last, -1, 1, -2, 2)
-                //     this.toolpath_options.magnitude += output
-                // })
-                // .catch(err => {
-                //     console.error(err);
-                // });
-
-                /* fetch("http://localhost:8888/sentiment", {
-                    "method": "GET",
-                    "headers": {}
-                })
-                .then(async response => {
-                    const data = await response.json();
-                    this.sentiment = data.sentiment
-                    this.toolpath_options.magnitude = Math.abs(data.sentiment)
-                    // data.length
-                    if (this.sentiment < 0) {
-                        this.toolpath_type = "SQUARE"
-                    } else {
-                        this.toolpath_type = "SINE"
-                    }
-                    if (this.lenght < data.lenght) {
-                        if (this.toolpath_options.diameter < 100) {
-                            console.log("small")
-                            this.toolpath_options.diameter = this.toolpath_options.diameter + 5
-                        }
-                    } else if (this.lenght > data.lenght) {
-                        if (this.toolpath_options.diameter > 10) {
-                            console.log("big")
-                            this.toolpath_options.diameter = this.toolpath_options.diameter - 5
-                        }
-                    }
-                    this.lenght = data.lenght
-                })
-                .catch(err => {
-                    console.error(err);
-                }); */
-            }, 3 * 1000)
-        },
-        unpoll () {
-            clearInterval(this.polling)
-            this.polling = null
-        },
-        scale (number, inMin, inMax, outMin, outMax) {
-            return (number - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
-        },
         move_up: function (event) {
             socket.emit('move_up');
         },
@@ -254,43 +188,6 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         emptyPoints(e) {
             this.points = [];
         }
-    },
-    created () {
-        VueRangeSlider.methods.handleKeyup = ()=> console.log;
-        VueRangeSlider.methods.handleKeydown = ()=> console.log;
-
-        // fetch("https://api2.binance.com/api/v3/ticker/price", {
-        //     "method": "GET",
-        //     "headers": {}
-        // })
-        // .then(async response => {
-        //     const data = await response.json();
-        //     this.eth.current = data.filter(element => element.symbol == "ETHEUR")[0].price
-        //     this.eth.last = this.eth.current
-        //     console.log(this.eth)
-        // })
-        // .catch(err => {
-        //     console.error(err);
-        // });
-
-        /* fetch("http://localhost:8888/sentiment", {
-                    "method": "GET",
-                    "headers": {}
-        })
-        .then(async response => {
-            const data = await response.json();
-            this.sentiment = data.sentiment
-            this.toolpath_options.magnitude = Math.abs(data.sentiment)
-            // data.length
-            if (this.sentiment < 0) {
-                this.toolpath_type = "SQUARE"
-            } else {
-                this.toolpath_type = "SINE"
-            }
-        })
-        .catch(err => {
-            console.error(err);
-        }); */
     },
     mounted() {
         var svg = document.getElementById("svg");
