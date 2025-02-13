@@ -406,26 +406,43 @@ class Shapehandler:
         
         return new_points
     
+    def add_rectangle_fill(self, points, start_x, start_y, direction, length):
+        densitiy = self.params_toolpath['magnitude']
+        segments = length // densitiy
+        
+        for i in range(int(segments)):
+            x = start_x + i * direction * densitiy
+            points.append(pc.point(x, start_y, 0))
+            points.append(pc.point(x, start_y + length, 0))
+            points.append(pc.point(x + direction * densitiy, start_y + length, 0))
+            points.append(pc.point(x + direction * densitiy, start_y, 0))
+        
+        points.append(pc.point(start_x + direction * length, start_y, 0))  # Ensure end point is aligned
+
+    def add_jagged_fill(self, points, start_x, start_y, direction, length):
+        density = self.params_toolpath['magnitude']
+        segments = length // density
+
+        for i in range(int(segments) + 1):
+            x = start_x + i * direction * density
+            y = start_y + (density/2 if i % 2 == 0 else -density/2)
+            points.append(pc.point(x, y, 0))
+        points.append(pc.point(start_x + direction * length, start_y, 0))  # Ensure end point is aligned
+
     def pyramide(self, layer, pattern): 
         # pyramide shape
         size = self.params_toolpath["linelength"]
         shrinking_factor = layer*0.5
         points = []
-        points.append(pc.point(0+shrinking_factor, 0+shrinking_factor, 0))
-        points.append(pc.point(size-shrinking_factor, 0+shrinking_factor, 0))
-        points.append(pc.point(size-shrinking_factor, size-shrinking_factor, 0))
-        points.append(pc.point(0+shrinking_factor, size-shrinking_factor, 0))
-        points.append(pc.point(0+shrinking_factor, 0+shrinking_factor, 0))
+        
 
-        if (pattern == "rectangle"):
-            self.params_toolpath["magnitude"] = size - 2*shrinking_factor
-            self.add_rectangle_line(points, 0+shrinking_factor, 0+shrinking_factor, 1, size-2*shrinking_factor)
+        if pattern == "rectangle":
+            #self.params_toolpath["magnitude"] = 4
+            self.add_rectangle_fill(points, 0+shrinking_factor, 0+shrinking_factor, 1, size-2*shrinking_factor)
 
-        if pattern == "loop":
-            loop_radius = 2
-            self.params_toolpath["magnitude"] = loop_radius
+        elif pattern == "loop":
+            loop_radius = self.params_toolpath["magnitude"]
             num_lines = (size-2*shrinking_factor) // (2 * loop_radius)
-            print("loop printing 00 " + str(num_lines))
             for i in range(int(num_lines)):
                 direction = 1
                 x_start = 0+shrinking_factor + loop_radius
@@ -436,6 +453,27 @@ class Shapehandler:
                 y_start = 0+shrinking_factor + loop_radius + i * 2 * loop_radius
                 self.add_loop_line(points, x_start, y_start, direction, size-2*shrinking_factor)
             
+        elif pattern == "jagged":
+            line_height = self.params_toolpath["magnitude"]
+            num_lines = (size-2*shrinking_factor) // line_height
+            for i in range(int(num_lines)):
+                direction = 1
+                x_start = 0+shrinking_factor + line_height/2
+                if i % 2 == 1:
+                    x_start = size-shrinking_factor - line_height/2
+                    direction = -1
 
+                y_start = 0+shrinking_factor + i * line_height
+                self.add_jagged_fill(points, x_start, y_start, direction, size-2*shrinking_factor)
+        else:
+            points.append(pc.point(0+shrinking_factor, 0+shrinking_factor, 0))
+            points.append(pc.point(size-shrinking_factor, 0+shrinking_factor, 0))
+            points.append(pc.point(size-shrinking_factor, size-shrinking_factor, 0))
+            points.append(pc.point(0+shrinking_factor, size-shrinking_factor, 0))
+            points.append(pc.point(0+shrinking_factor, 0+shrinking_factor, 0))
+
+        #self.params_toolpath["rotation_degree"] = layer
+        print("rotation degree: ", self.params_toolpath["rotation_degree"])
+        self.rotate(points, np.array([(size-2*shrinking_factor)/2, (size-2*shrinking_factor)/2, 0]))
         
         return points

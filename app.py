@@ -51,26 +51,28 @@ def telegram_webhook():
     #Endpoint to receive updates from Telegram.
     update = request.json  # Get the JSON payload from Telegram
     global height_max
-    global printing
     global toggle_state
+    global layer
     if 'message' in update:
         chat_id = update['message']['chat']['id']
 
         if "text" in update["message"]:
+            parameter_handler.count_input += 1
             text = update['message']['text']
-            topic = parameter_handler.map_topic_to_pattern(text)
+            parameter_handler.add_text(text)
+            #topic = parameter_handler.map_topic_to_pattern(text)
             ai_response = get_openai_response(text)
-        
-            send_message_to_telegram(chat_id, f"You said something from topic : {topic}")
             send_message_to_telegram(chat_id, f"OpenAI response: {ai_response}")
 
         if "photo" in update["message"]:
+            parameter_handler.count_input += 1
             print("photo received")
             photo_sizes = update["message"]["photo"]  # List of photo sizes
             file_id = photo_sizes[-1]["file_id"]
             image_url = fetch_image(file_id)
             #ai_response = analyze_image_with_openai(image_url)
-            brightnes_level = map_brightness_to_value(image_url, 1, 10)
+            brightnes_level = map_brightness_to_value(image_url, 1, 8) * 0.5
+            parameter_handler.density = brightnes_level
             send_message_to_telegram(chat_id,"you send a photo with brightness value: " + str(brightnes_level))
             #send_message_to_telegram(chat_id, f"OpenAI response: {ai_response}")
 
@@ -78,14 +80,17 @@ def telegram_webhook():
             location = update["message"]["location"]
             dist = location_handler.handle_location(location)
             if dist > 0:
+                topic_nr, pattern = parameter_handler.map_topic_to_pattern()
+                socketio.emit('toolpath_type', { 'toolpath_type': pattern })
+                shape_handler.params_toolpath["magnitude"] = parameter_handler.density
                 height_max += (dist*1000)
-                if printing != True:
-                    toggle_state = True
-                    socketio.emit('toolpath_type', { 'toolpath_type': parameter_handler.get_pattern() })
-                    socketio.emit('printer_pause_resume')
+                parameter_handler.set_new_epoch(height_max, layer)
+                send_message_to_telegram(chat_id, f"Your text messages during this walking distance belonged to topic : {topic_nr} corresponding to pattern: {pattern}")    
+                    #socketio.emit('printer_pause_resume')
             #print("Emitting start_print event")
             #socketio.emit('trigger_print')
             send_message_to_telegram(chat_id, f"Received your location with distance to previous location: ({dist})")
+            
 
         
 
@@ -237,19 +242,19 @@ def start_print(data, wobble):
     global height_max
     global tooplpath_type
 
-    angle = 0
     while printing:
 
         #Set Machine Height
-        if(height >= height_max):
-            emit('printer_pause_resume')
+        while(height >= height_max):
+            print("loop height = " + str(height))
+            time.sleep(2)
+            #emit('printer_pause_resume')
             #printing = False
 
-        wobbler = wobble
-        angle = angle + random.randint(-wobbler, wobbler)
 
         # create the shape points
         # points = shape_handler.generate_spiral(circumnavigations, shape, diameter, centerpoints)
+        shape_handler.params_toolpath["rotation_degree"] += parameter_handler.get_layer_rotation(slicer_handler.params['layer_hight'], layer)
         points = shape_handler.pyramide(layer, tooplpath_type)
 
         repetitions = 1
@@ -258,17 +263,17 @@ def start_print(data, wobble):
             gcode = slicer_handler.create(height, points)
             print_handler.send(gcode)
 
-            time.sleep(3)  # Wait 3 seconds
-            while (print_handler.is_printing() or print_handler.is_paused() or not printing):
+            
+            while (print_handler.is_printing() or print_handler.is_paused()):
                 time.sleep(2)
-                print("while loop print")
-                #print(print_handler.status())
+                print(print_handler.status())
 
             # update layer height
             layer = layer + 1
             height = height + slicer_handler.params['layer_hight']
             emit('layer', {'layer': layer}) #"We are on Layer" – Output
 
+            time.sleep(3)  # Wait 3 seconds
             
             
 
