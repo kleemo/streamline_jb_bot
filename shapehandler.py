@@ -19,7 +19,7 @@ import numpy as np
 
 class Shapehandler:
     def __init__(self):
-        self.params_toolpath = {
+        self.params_toolpath = { #previous parameters
             "transformation_factor": 0.3,
             "growth_factor": 0.5,
             "growth_rotation_factor": 1,
@@ -40,6 +40,18 @@ class Shapehandler:
             "rotation_degree": 0,
             "rotation_goal": 0,
             "grow": 'center',
+        }
+        self.center = (0,0)
+        self.previous_pattern_strength = 0
+        self.previous_rotation = 0
+        self.parameters = { #new parameters
+            "shape": "none",
+            "diameter": (0,0),
+            "growth_direction": (0, 0),
+            "pattern": "none",
+            "pattern_spacing":3,
+            "pattern_strength":3,
+            "rotation": 0
         }
 
     def update_transformations(self):
@@ -259,8 +271,11 @@ class Shapehandler:
         points.append(pc.point(start_x + direction * length, start_y, 0))  # Ensure end point is aligned
 
     def add_loop_line(self, points, start_x, start_y, direction, length):
-        loop_radius = self.params_toolpath['magnitude']
-        loops = length // (2 * loop_radius)
+        loop_radius = self.params_toolpath['magnitude'] * 0.5
+        loops = int(length // (2 * loop_radius))
+        if loops > 0:
+            loop_radius = length / (2 * loops)
+            #loops = int(length // (2 * loop_radius))
         for i in range(int(loops)):
             theta = np.linspace(0, 2 * np.pi, 20)
             for angle in theta:
@@ -406,24 +421,31 @@ class Shapehandler:
         
         return new_points
     
-    def add_rectangle_fill(self, points, start_x, start_y, direction, length):
+    def add_line_fill(self, points, start_x, start_y, direction, length):
         densitiy = self.params_toolpath['magnitude']
-        segments = length // densitiy
+        segments = int(length // densitiy)
+        if segments > 0:
+            densitiy = length / segments
+            #segments = int(length // densitiy)
         
-        for i in range(int(segments)):
+        for i in range(0,int(segments),2):
             x = start_x + i * direction * densitiy
             points.append(pc.point(x, start_y, 0))
             points.append(pc.point(x, start_y + length, 0))
             points.append(pc.point(x + direction * densitiy, start_y + length, 0))
             points.append(pc.point(x + direction * densitiy, start_y, 0))
         
-        points.append(pc.point(start_x + direction * length, start_y, 0))  # Ensure end point is aligned
+        points.append(pc.point(start_x + direction * length, start_y, 0))
+        points.append(pc.point(start_x + direction * length, start_y + length, 0))  # Ensure end point is aligned
 
     def add_jagged_fill(self, points, start_x, start_y, direction, length):
         density = self.params_toolpath['magnitude']
-        segments = length // density
+        segments = int(length // density)
+        if segments > 0:
+            density = length / segments
+            #segments = int(length // density)
 
-        for i in range(int(segments) + 1):
+        for i in range(int(segments)):
             x = start_x + i * direction * density
             y = start_y + (density/2 if i % 2 == 0 else -density/2)
             points.append(pc.point(x, y, 0))
@@ -434,15 +456,18 @@ class Shapehandler:
         size = self.params_toolpath["linelength"]
         shrinking_factor = layer*0.5
         points = []
-        
 
         if pattern == "rectangle":
             #self.params_toolpath["magnitude"] = 4
-            self.add_rectangle_fill(points, 0+shrinking_factor, 0+shrinking_factor, 1, size-2*shrinking_factor)
+            self.add_line_fill(points, 0+shrinking_factor, 0+shrinking_factor, 1, size-2*shrinking_factor)
 
         elif pattern == "loop":
-            loop_radius = self.params_toolpath["magnitude"]
-            num_lines = (size-2*shrinking_factor) // (2 * loop_radius)
+            loop_radius = self.params_toolpath["magnitude"] * 0.5
+            num_lines = int((size-2*shrinking_factor) // (2 * loop_radius))
+            if num_lines > 0:
+                loop_radius = (size-2*shrinking_factor) / (2 * num_lines)
+                #num_lines = int((size-2*shrinking_factor) // (2 * loop_radius))
+            
             for i in range(int(num_lines)):
                 direction = 1
                 x_start = 0+shrinking_factor + loop_radius
@@ -450,20 +475,23 @@ class Shapehandler:
                     x_start = size-shrinking_factor - loop_radius
                     direction = -1
 
-                y_start = 0+shrinking_factor + loop_radius + i * 2 * loop_radius
+                y_start = 0+shrinking_factor + i * 2 * loop_radius
                 self.add_loop_line(points, x_start, y_start, direction, size-2*shrinking_factor)
             
         elif pattern == "jagged":
             line_height = self.params_toolpath["magnitude"]
-            num_lines = (size-2*shrinking_factor) // line_height
+            num_lines = int((size-2*shrinking_factor) // line_height)
+            if num_lines > 0:
+                line_height = (size-2*shrinking_factor) / num_lines
+                #num_lines = int((size-2*shrinking_factor) // line_height)
             for i in range(int(num_lines)):
                 direction = 1
-                x_start = 0+shrinking_factor + line_height/2
+                x_start = 0+shrinking_factor
                 if i % 2 == 1:
-                    x_start = size-shrinking_factor - line_height/2
+                    x_start = size-shrinking_factor
                     direction = -1
 
-                y_start = 0+shrinking_factor + i * line_height
+                y_start = 0+shrinking_factor + line_height*0.5 + i * line_height
                 self.add_jagged_fill(points, x_start, y_start, direction, size-2*shrinking_factor)
         else:
             points.append(pc.point(0+shrinking_factor, 0+shrinking_factor, 0))
@@ -471,9 +499,144 @@ class Shapehandler:
             points.append(pc.point(size-shrinking_factor, size-shrinking_factor, 0))
             points.append(pc.point(0+shrinking_factor, size-shrinking_factor, 0))
             points.append(pc.point(0+shrinking_factor, 0+shrinking_factor, 0))
+        
+        
 
         #self.params_toolpath["rotation_degree"] = layer
         print("rotation degree: ", self.params_toolpath["rotation_degree"])
         self.rotate(points, np.array([(size-2*shrinking_factor)/2, (size-2*shrinking_factor)/2, 0]))
         
         return points
+    
+    def surface_distortion(self,layer):
+        size = self.params_toolpath["linelength"]
+        points = []
+
+        points.append(pc.point(0, 0, 0))
+        points.append(pc.point(size, 0, 0))
+        points.append(pc.point(size, size, 0))
+
+        random_y = -1
+        if layer / 10 > 1:
+            random_y = 1
+        if layer / 15 > 2:
+            random_y = -1
+        self.previous_guides[0] += random_y
+        points.append(pc.point(size/4*3, size*0.9 + self.previous_guides[0], 0))
+        self.previous_guides[1] += random_y
+        points.append(pc.point(size/4*2, size*1.1 - self.previous_guides[1], 0))
+        if layer / 7 > 1:
+            random_y = 1
+        if layer / 10 > 2:
+            random_y = -1
+        if layer / 9 > 3:
+            random_y = 1
+        if layer / 10 > 4:
+            random_y = -1
+        self.previous_guides[2] += random_y
+        points.append(pc.point(size/4, size*0.8 - self.previous_guides[2], 0))
+
+        points.append(pc.point(0, size, 0))
+        points.append(pc.point(0, 0, 0))
+
+        return points
+    
+    def update_parameters(self, data):
+        self.parameters["shape"] = data["shape"]
+        self.parameters["diameter"] = data["diameter"]
+        self.parameters["growth_direction"] = data["growth_direction"]
+        self.parameters["pattern"] = data["pattern"]
+        self.parameters["rotation"] = data["rotation"]
+        print("Updated parameters: ", self.parameters)
+
+    def generate_next_layer(self):
+        guide_points = []
+        pattern_line = []
+        center_distance = pc.distance(self.center,self.parameters["growth_direction"])
+
+        if self.parameters["shape"] == "rectangle":
+            length = self.parameters["diameter"][0]
+            heigth = self.parameters["diameter"][1]
+            if center_distance > 0.4:
+                direction = pc.normalize(pc.vector(np.array(self.center), np.array(self.parameters["growth_direction"])))
+                self.center += (direction * 0.3)
+
+            guide_points.append(pc.point(self.center[0]-length/2, self.center[1] -heigth/2, 0))
+            guide_points.append(pc.point(self.center[0]+length/2, self.center[1] -heigth/2, 0))
+            guide_points.append(pc.point(self.center[0]+length/2, self.center[1]+heigth/2, 0))
+            guide_points.append(pc.point(self.center[0]-length/2, self.center[1]+heigth/2, 0))
+            guide_points.append(pc.point(self.center[0]-length/2, self.center[1]-heigth/2, 0))
+            #add pattern line
+            if self.parameters["pattern"] == "jagged" or self.previous_pattern_strength > 0:
+                if self.previous_pattern_strength < self.parameters["pattern_strength"] and self.parameters["pattern"] == "jagged":
+                    self.previous_pattern_strength += 0.4
+                elif self.parameters["pattern"] != "jagged":
+                    self.previous_pattern_strength -= 0.4
+
+                for i in range(len(guide_points)-1):
+                    start = guide_points[i]
+                    end = guide_points[i+1]
+                    # Calculate the direction vector
+                    direction = pc.normalize(pc.vector(start, end))
+                    distance = pc.distance(start, end)
+                    num_segments = int(distance // self.parameters["pattern_spacing"])
+                    segment_length = distance / num_segments
+                    
+                    for j in range(num_segments):
+                        new_point = start + j * segment_length * direction
+                        perpendicular = np.array([-direction[1], direction[0], 0]) * self.previous_pattern_strength
+                        if j % 2 == 0:
+                            new_point += perpendicular
+                        else:    
+                            new_point -= perpendicular
+                        pattern_line.append(new_point)
+                    pattern_line.append(end)
+                   
+             
+                    
+
+        if self.parameters["shape"] == "circle":
+            radius_x = self.parameters["diameter"][0] / 2
+            radius_y = self.parameters["diameter"][1] / 2
+            num_points = 102  # Number of points to generate for the circle
+            if center_distance > 0.4:
+                print("distance to center: " + str(center_distance))
+                direction = pc.normalize(pc.vector(np.array(self.center), np.array(self.parameters["growth_direction"])))
+                self.center += (direction * 0.3)
+
+            for i in range(num_points):
+                angle = 2 * np.pi * i / num_points
+                x = self.center[0] + radius_x * np.cos(angle)
+                y = self.center[1] + radius_y * np.sin(angle)
+                guide_points.append(pc.point(x, y, 0))
+                if i == num_points - 1:
+                    guide_points.append(pc.point(self.center[0]+radius_x*np.cos(0), self.center[1]+radius_y*np.sin(0), 0))
+            #add pattern line
+            if self.parameters["pattern"] == "jagged" or self.previous_pattern_strength > 0:
+                if self.previous_pattern_strength < self.parameters["pattern_strength"] and self.parameters["pattern"] == "jagged":
+                    self.previous_pattern_strength += 0.4
+                elif self.parameters["pattern"] != "jagged":
+                    self.previous_pattern_strength -= 0.4
+                for i in range(len(guide_points)):
+                    if i % self.parameters["pattern_spacing"] == 0 or i == len(guide_points)-1:
+                        point = guide_points[i]
+                        direction = pc.normalize(pc.vector(pc.point(self.center[0],self.center[1],0), point))
+                        if i % 2 == 0:
+                            point += (direction*self.previous_pattern_strength)
+                        else:
+                            point -= (direction*self.previous_pattern_strength)
+                        pattern_line.append(point)
+
+        self.previous_guides = guide_points
+
+        if self.parameters["rotation"] > self.previous_rotation:
+            self.previous_rotation += 0.5
+
+        if self.parameters["pattern"] == "jagged" or self.previous_pattern_strength > 0:
+            for i in range(len(pattern_line)):
+                pattern_line[i] = pc.rotate(pattern_line[i],pc.point(self.center[0],self.center[1],0) , self.previous_rotation)
+            return pattern_line
+        
+        for i in range(len(guide_points)):
+            guide_points[i] = pc.rotate(guide_points[i],pc.point(self.center[0],self.center[1],0) , self.previous_rotation)
+        return guide_points

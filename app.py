@@ -13,12 +13,11 @@ import shapehandler
 import slicerhandler
 import point_calc as pc
 
-from telegram_bot.handlers import send_message_to_telegram, fetch_image, get_openai_response, analyze_image_with_openai
-from telegram_bot.utils import image_encoder, map_brightness_to_value
+from telegram_bot.handlers import send_message_to_telegram, fetch_file, get_openai_response, analyze_image_with_openai, download_file
 import telegram_bot.locationhandler
 import telegram_bot.parametershandler
 
-port = 'COM3'
+port = 'COM3' # use this port for Windows
 # port = '/dev/tty.usbmodem14101' # use this port value for Aurelian
 baud = 115200 # baud rate as defined in the streamline-delta-arduino firmware
 # baud = 250000 # use this baud rate for the ZhDK Makerbot printer
@@ -27,14 +26,11 @@ print_handler = DefaultUSBHandler(port, baud)
 slicer_handler = slicerhandler.Slicerhandler()
 shape_handler = shapehandler.Shapehandler()
 
-location_handler = telegram_bot.locationhandler.LocationHandler()
 parameter_handler = telegram_bot.parametershandler.ParametersHandler("straight")
 
 layer = 0
 height = 0
-height_max = 0
-tooplpath_type = "straight"
-grow =  "center"
+height_max = 80
 printing = False
 toggle_state = False
 
@@ -50,47 +46,57 @@ def index():
 def telegram_webhook():
     #Endpoint to receive updates from Telegram.
     update = request.json  # Get the JSON payload from Telegram
-    global height_max
-    global toggle_state
+    global parameter_handler
     global layer
+    
     if 'message' in update:
         chat_id = update['message']['chat']['id']
+        parameter_handler.num_input += 1
+        parameter_handler.set_rotation(layer)
 
         if "text" in update["message"]:
-            parameter_handler.count_input += 1
             text = update['message']['text']
             parameter_handler.add_text(text)
-            #topic = parameter_handler.map_topic_to_pattern(text)
-            ai_response = get_openai_response(text)
+            topic_nr, pattern = parameter_handler.map_topic_to_pattern()
+            
+            if parameter_handler.shape == "none":
+                parameter_handler.shape = "circle"
+                parameter_handler.set_diameter("text", text)
+
+            ai_response = "dev mode" #get_openai_response(text)
             send_message_to_telegram(chat_id, f"OpenAI response: {ai_response}")
+            send_message_to_telegram(chat_id, f"Topic number: {topic_nr}, Pattern: {pattern}")
 
         if "photo" in update["message"]:
-            parameter_handler.count_input += 1
             print("photo received")
             photo_sizes = update["message"]["photo"]  # List of photo sizes
             file_id = photo_sizes[-1]["file_id"]
-            image_url = fetch_image(file_id)
-            #ai_response = analyze_image_with_openai(image_url)
-            brightnes_level = map_brightness_to_value(image_url, 1, 8) * 0.5
-            parameter_handler.density = brightnes_level
-            send_message_to_telegram(chat_id,"you send a photo with brightness value: " + str(brightnes_level))
+            image_url = fetch_file(file_id)
+            if parameter_handler.shape == "none":
+                parameter_handler.shape = "rectangle"
+                parameter_handler.set_diameter("image", image_url)
+
+            ai_response = "dev mode" #analyze_image_with_openai(image_url)
+            send_message_to_telegram(chat_id,f"ai response: {ai_response}")
             #send_message_to_telegram(chat_id, f"OpenAI response: {ai_response}")
 
         if "location" in update["message"]:
             location = update["message"]["location"]
-            dist = location_handler.handle_location(location)
-            if dist > 0:
-                topic_nr, pattern = parameter_handler.map_topic_to_pattern()
-                socketio.emit('toolpath_type', { 'toolpath_type': pattern })
-                shape_handler.params_toolpath["magnitude"] = parameter_handler.density
-                height_max += (dist*1000)
-                parameter_handler.set_new_epoch(height_max, layer)
-                send_message_to_telegram(chat_id, f"Your text messages during this walking distance belonged to topic : {topic_nr} corresponding to pattern: {pattern}")    
-                    #socketio.emit('printer_pause_resume')
-            #print("Emitting start_print event")
-            #socketio.emit('trigger_print')
-            send_message_to_telegram(chat_id, f"Received your location with distance to previous location: ({dist})")
+            parameter_handler.set_growth_direction(location)
+        
+            send_message_to_telegram(chat_id, f"Received your location: ({location})")
+
+        if "voice" in update["message"]:
+            voice = update["message"]["voice"]
+            file_id = voice["file_id"]
+            print("file type: " + str(voice["mime_type"]))
+            file_url = fetch_file(file_id)
+            voice_file_path = download_file(file_url, "voice.ogg")
+            if parameter_handler.shape == "none":
+                parameter_handler.shape = "rectangle"
+                parameter_handler.set_diameter("voice", voice_file_path)
             
+            send_message_to_telegram(chat_id, f"Received your voice message:")
 
         
 
@@ -128,12 +134,6 @@ def setLayer(data):
     global layer
     layer = int(data["layer"])
 
-@socketio.on('toolpath_type')
-def setToolpath(data):
-    print("toolpath_type socket")
-    global tooplpath_type
-    tooplpath_type = data["toolpath_type"]
-    print(str(tooplpath_type))
 
 @socketio.on('printer_connect')
 def printer_connect(port, baud):
@@ -240,12 +240,13 @@ def start_print(data, wobble):
     global layer
     global height
     global height_max
-    global tooplpath_type
+    global parameter_handler
+    global shape_handler
 
     while printing:
 
         #Set Machine Height
-        while(height >= height_max):
+        while(height >= height_max or parameter_handler.shape == "none"):
             print("loop height = " + str(height))
             time.sleep(2)
             #emit('printer_pause_resume')
@@ -253,9 +254,10 @@ def start_print(data, wobble):
 
 
         # create the shape points
-        # points = shape_handler.generate_spiral(circumnavigations, shape, diameter, centerpoints)
-        shape_handler.params_toolpath["rotation_degree"] += parameter_handler.get_layer_rotation(slicer_handler.params['layer_hight'], layer)
-        points = shape_handler.pyramide(layer, tooplpath_type)
+        if layer % 6 == 0:
+            #update parameters every 6 layers
+            shape_handler.update_parameters(parameter_handler.get_parameters())
+        points = shape_handler.generate_next_layer()
 
         repetitions = 1
         for i in range(repetitions):

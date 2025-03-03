@@ -25,7 +25,7 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         polling: null,
         layer: 0,
         connected: false,
-        port: '/dev/tty.usbmodem2101',
+        port: 'COM3',
         baud: '115200',
         log_text: "some random text and even more",
         value: 1,
