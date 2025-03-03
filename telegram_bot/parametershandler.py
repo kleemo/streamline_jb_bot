@@ -1,19 +1,63 @@
 import joblib
 import numpy as np
 import math
+from skimage.io import imread
+import librosa
+import os
 
 class ParametersHandler():
     def __init__(self, pattern):
         self.pattern = pattern
         self.accumulated_text = ""
         self.num_input = 0
-        self.count_input = 0
-        self.epoch_height = 0
-        self.start_layer = 0
-        self.density = 4
+        self.shape = "none"
+        self.diameter = (0,0)
+        self.growth_direction = (0, 0),
+        self.rotation = 0
+
+    def set_diameter(self, input_type, input):
+        if input_type == "text":
+            words = input.split(" ")
+            #Word Density (Words per character count)
+            word_density = len(words) / len(input) if len(input) > 0 else 0
+            print("word density "+ str(word_density))
+            self.diameter = (len(input)/2, word_density * 110)
+        if input_type == "image":
+            img = imread(input, as_gray=True)
+            # Calculate the average brightness (pixel intensity ranges from 0 to 1)
+            avg_brightness = np.mean(img)
+            median_brightness = np.median(img)
+            # Map the average brightness to a value between 10 and 100
+            self.diameter = (10 + 90 * avg_brightness, 10 + 90 * median_brightness)
+        if input_type == "voice":
+            input_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), input)
+            if not os.path.exists(input_path):
+                raise FileNotFoundError(f"File not found: {input_path}")
+            
+            y, sr = librosa.load(input_path, sr=None)
+            rms = librosa.feature.rms(y=y) # Root Mean Square Energy loudness of the audio
+            print("audio loudness: " + str(rms.mean()))
+            self.diameter = (rms.mean() * 800, 0)
+
+    def set_growth_direction(self, location):
+        latiude = location["latitude"]
+        longitude = location["longitude"]
+        ref_lat = 47.390846
+        ref_lon = 8.511541
+        self.growth_direction = ((longitude - ref_lon) * 200, (latiude - ref_lat)*200)
 
     def get_pattern(self):
         return self.pattern
+    
+    def get_parameters(self):
+        data = {
+            "shape": self.shape,
+            "diameter": self.diameter,
+            "growth_direction": self.growth_direction,
+            "pattern": self.pattern,
+            "rotation": self.rotation
+        }
+        return data
     
     def map_topic_to_pattern(self):
      vecotrizer = joblib.load("models\Text_vectorizer.pkl")
@@ -37,22 +81,16 @@ class ParametersHandler():
          
      return topic_nr, self.pattern
 
-    def get_layer_rotation(self, layer_heigth, current_layer):
-        if self.num_input == 0:
-            return 0
-        total_layers = math.ceil(self.epoch_height / layer_heigth)
-        mod = math.ceil(total_layers / self.num_input)
-        layer = current_layer - self.start_layer
-        if layer % mod == 0:
-            return 1
-        else:
-            return 0
+    def set_rotation(self, layer):
+        if layer <= 0:
+            return
+        increase = self.num_input/layer
+        if layer > 5:
+            increase *= 10
+        self.rotation += increase
   
-    def set_new_epoch(self, height, layer):
-        self.epoch_height = height
-        self.start_layer = layer
-        self.num_input = self.count_input
-        self.count_input = 0
+    def set_new_epoch(self):
+        self.num_input = 0
         self.accumulated_text = ""
 
     def add_text(self, text):
