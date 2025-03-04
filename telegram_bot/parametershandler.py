@@ -71,11 +71,11 @@ class ParametersHandler():
      elif topic_nr == 5:
          self.pattern = "rectangle"
      elif topic_nr == 8:
-         self.pattern = "loop"
+         self.pattern = "straight"
      elif topic_nr == 9:
-         self.pattern = "cross_stitch"
+         self.pattern = "straight"
      elif topic_nr == 10:
-         self.pattern = "wave"
+         self.pattern = "straight"
      else:
          self.pattern = "straight"
          
