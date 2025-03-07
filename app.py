@@ -59,7 +59,7 @@ def telegram_webhook():
             parameter_handler.add_text(text)
             topic_nr, pattern = parameter_handler.map_topic_to_pattern()
             
-            if parameter_handler.shape == "none":
+            if parameter_handler.shape == "none" or parameter_handler.shape == "circle":
                 parameter_handler.shape = "circle"
                 parameter_handler.set_diameter("text", text)
 
@@ -72,7 +72,7 @@ def telegram_webhook():
             photo_sizes = update["message"]["photo"]  # List of photo sizes
             file_id = photo_sizes[-1]["file_id"]
             image_url = fetch_file(file_id)
-            if parameter_handler.shape == "none":
+            if parameter_handler.shape == "none" or parameter_handler.shape == "rectangle":
                 parameter_handler.shape = "rectangle"
                 parameter_handler.set_diameter("image", image_url)
 
@@ -89,7 +89,6 @@ def telegram_webhook():
         if "voice" in update["message"]:
             voice = update["message"]["voice"]
             file_id = voice["file_id"]
-            print("file type: " + str(voice["mime_type"]))
             file_url = fetch_file(file_id)
             voice_file_path = download_file(file_url, "voice.ogg")
             if parameter_handler.shape == "none":

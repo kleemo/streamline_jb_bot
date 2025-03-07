@@ -20,8 +20,15 @@ class ParametersHandler():
             words = input.split(" ")
             #Word Density (Words per character count)
             word_density = len(words) / len(input) if len(input) > 0 else 0
-            print("word density "+ str(word_density))
-            self.diameter = (len(input)/2, word_density * 110)
+            # Map the length of the input to a range between 15 and 60
+            input_length = len(input)
+            input_min = 1  # Minimum possible length of the input
+            input_max = 400  # Maximum possible length of the input (adjust as needed)
+            min_range = 15
+            max_range = 65
+            mapped_length = min_range + ((input_length - input_min) / (input_max - input_min)) * (max_range - min_range)
+            mapped_length = max(min(mapped_length, max_range), min_range)
+            self.diameter = (mapped_length, word_density * 160)
         if input_type == "image":
             img = imread(input, as_gray=True)
             # Calculate the average brightness (pixel intensity ranges from 0 to 1)
@@ -37,7 +44,7 @@ class ParametersHandler():
             y, sr = librosa.load(input_path, sr=None)
             rms = librosa.feature.rms(y=y) # Root Mean Square Energy loudness of the audio
             print("audio loudness: " + str(rms.mean()))
-            self.diameter = (rms.mean() * 800, 0)
+            self.diameter = (rms.mean() * 800, 30)
 
     def set_growth_direction(self, location):
         latiude = location["latitude"]

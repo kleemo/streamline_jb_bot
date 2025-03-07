@@ -42,10 +42,10 @@ class Shapehandler:
             "grow": 'center',
         }
         self.center = (0,0)
-        self.previous_pattern_height = 0
-        self.previous_pattern_width = 0
-        self.previous_pattern = "straight"
-        self.previous_rotation = 0
+        self.pattern_height = 0
+        self.pattern_width = 0
+        self.current_rotation = 0
+        self.current_diameter = (0,0)
         self.parameters = { #new parameters
             "shape": "none",
             "diameter": (0,0),
@@ -290,7 +290,20 @@ class Shapehandler:
         self.parameters["growth_direction"] = data["growth_direction"]
         self.parameters["pattern"] = data["pattern"]
         self.parameters["rotation"] = data["rotation"]
+        if set(self.current_diameter) == {0}:
+            self.current_diameter = self.parameters["diameter"]
         print("Updated parameters: ", self.parameters)
+
+    def update_pattern_parameters(self):
+        if self.pattern_height < self.parameters["pattern_strength"] and self.parameters["pattern"] != "straight":
+                self.pattern_height += 0.4
+        elif self.parameters["pattern"] == "straight":
+                self.pattern_height -= 0.4
+                self.pattern_width -= 0.4
+        if self.parameters["pattern"] == "jagged" and self.pattern_width > 0:
+                self.pattern_width -= 0.4 
+        if self.parameters["pattern"] == "rectangle" and self.pattern_width < self.parameters["pattern_spacing"]:
+                self.pattern_width += 0.4
 
     def generate_next_layer(self):
         guide_points = []
@@ -299,10 +312,15 @@ class Shapehandler:
         if center_distance > 0.4:
                 direction = pc.normalize(pc.vector(np.array(self.center), np.array(self.parameters["growth_direction"])))
                 self.center += (direction * 0.3)
+        diameter_distance = pc.distance(self.current_diameter,self.parameters["diameter"])
+        if diameter_distance > 1:
+                direction = pc.normalize(pc.vector(np.array(self.current_diameter), np.array(self.parameters["diameter"])))
+                self.current_diameter += direction 
+                print("current_diameter: ", self.current_diameter)
 # rectangle shape
         if self.parameters["shape"] == "rectangle":
-            length = self.parameters["diameter"][0]
-            heigth = self.parameters["diameter"][1]
+            length = self.current_diameter[0]
+            heigth = self.current_diameter[1]
 
             guide_points.append(pc.point(self.center[0]-length/2, self.center[1] -heigth/2, 0))
             guide_points.append(pc.point(self.center[0]+length/2, self.center[1] -heigth/2, 0))
@@ -310,41 +328,34 @@ class Shapehandler:
             guide_points.append(pc.point(self.center[0]-length/2, self.center[1]+heigth/2, 0))
             guide_points.append(pc.point(self.center[0]-length/2, self.center[1]-heigth/2, 0))
         #add pattern line
-            if self.parameters["pattern"] != "straight" or self.previous_pattern_height > 0:
-                if self.previous_pattern_height < self.parameters["pattern_strength"] and self.parameters["pattern"] != "straight":
-                    self.previous_pattern_height += 0.4
-                elif self.parameters["pattern"] == "straight":
-                    self.previous_pattern_height -= 0.4
-                    self.previous_pattern_width -= 0.4
-                if self.parameters["pattern"] == "jagged" and self.previous_pattern_width > 0:
-                            self.previous_pattern_width -= 0.4 
-                if self.parameters["pattern"] == "rectangle" and self.previous_pattern_width < self.parameters["pattern_spacing"]:
-                            self.previous_pattern_width += 0.4
+            if self.parameters["pattern"] != "straight" or self.pattern_height > 0:
+                self.update_pattern_parameters()
                 for i in range(len(guide_points)-1):
                     start = guide_points[i]
                     end = guide_points[i+1]
                     # Calculate the direction vector
                     direction = pc.normalize(pc.vector(start, end))
                     distance = pc.distance(start, end)
-                    num_segments = int(distance // self.parameters["pattern_spacing"])
-                    segment_length = distance / num_segments    
-                    for j in range(num_segments):
-                        new_point = start + j * segment_length * direction
-                        perpendicular = np.array([-direction[1], direction[0], 0]) * self.previous_pattern_height
-                        if j % 2 == 0:
-                            new_point += perpendicular
-                        else:    
-                            new_point -= perpendicular
-                        if self.previous_pattern_width > 0:
-                            pattern_line.append(new_point - (direction * (self.previous_pattern_width*0.5)))
-                            pattern_line.append(new_point + (direction * (self.previous_pattern_width*0.5)))
-                        else:
-                            pattern_line.append(new_point)
+                    num_points = 36  # Number of points to generate for the line
+                    segment_length = distance / num_points    
+                    for j in range(num_points):
+                        if j % self.parameters["pattern_spacing"] == 0 or j == num_points-1:
+                            new_point = start + j * segment_length * direction
+                            perpendicular = np.array([-direction[1], direction[0], 0]) * self.pattern_height
+                            if j % 2 == 0:
+                                new_point += perpendicular
+                            else:    
+                                new_point -= perpendicular
+                            if self.pattern_width > 0:
+                                pattern_line.append(new_point - (direction * (self.pattern_width*0.5)))
+                                pattern_line.append(new_point + (direction * (self.pattern_width*0.5)))
+                            else:
+                                pattern_line.append(new_point)
                     pattern_line.append(end) 
-# cirecle shape                    
+# circle shape                    
         if self.parameters["shape"] == "circle":
-            radius_x = self.parameters["diameter"][0] / 2
-            radius_y = self.parameters["diameter"][1] / 2
+            radius_x = self.current_diameter[0] / 2
+            radius_y = self.current_diameter[1] / 2
             num_points = 102  # Number of points to generate for the circle
 
             for i in range(num_points):
@@ -355,31 +366,33 @@ class Shapehandler:
                 if i == num_points - 1:
                     guide_points.append(pc.point(self.center[0]+radius_x*np.cos(0), self.center[1]+radius_y*np.sin(0), 0))
         #add pattern line
-            if self.parameters["pattern"] == "jagged" or self.previous_pattern_height > 0:
-                if self.previous_pattern_height < self.parameters["pattern_strength"] and self.parameters["pattern"] == "jagged":
-                    self.previous_pattern_height += 0.4
-                elif self.parameters["pattern"] != "jagged":
-                    self.previous_pattern_height -= 0.4
+            if self.parameters["pattern"] != "straight" or self.pattern_height > 0:
+                self.update_pattern_parameters()
                 for i in range(len(guide_points)):
                     if i % self.parameters["pattern_spacing"] == 0 or i == len(guide_points)-1:
                         point = guide_points[i]
                         direction = pc.normalize(pc.vector(pc.point(self.center[0],self.center[1],0), point))
+                        perpendicular = np.array([-direction[1], direction[0], 0])
                         if i % 2 == 0:
-                            point += (direction*self.previous_pattern_height)
+                            point += (direction*self.pattern_height)
                         else:
-                            point -= (direction*self.previous_pattern_height)
-                        pattern_line.append(point)
+                            point -= (direction*self.pattern_height)
+                        if self.pattern_width > 0:
+                            pattern_line.append(point - (perpendicular * (self.pattern_width*0.5)))
+                            pattern_line.append(point + (perpendicular * (self.pattern_width*0.5)))
+                        else:   
+                            pattern_line.append(point)
 # return correct points
         self.previous_guides = guide_points
 
-        if self.parameters["rotation"] > self.previous_rotation:
-            self.previous_rotation += 0.5
+        if self.parameters["rotation"] > self.current_rotation:
+            self.current_rotation += 0.5
 
-        if self.previous_pattern_height > 0:
+        if self.pattern_height > 0:
             for i in range(len(pattern_line)):
-                pattern_line[i] = pc.rotate(pattern_line[i],pc.point(self.center[0],self.center[1],0) , self.previous_rotation)
+                pattern_line[i] = pc.rotate(pattern_line[i],pc.point(self.center[0],self.center[1],0) , self.current_rotation)
             return pattern_line
         
         for i in range(len(guide_points)):
-            guide_points[i] = pc.rotate(guide_points[i],pc.point(self.center[0],self.center[1],0) , self.previous_rotation)
+            guide_points[i] = pc.rotate(guide_points[i],pc.point(self.center[0],self.center[1],0) , self.current_rotation)
         return guide_points
