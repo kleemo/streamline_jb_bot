@@ -14,7 +14,6 @@ import slicerhandler
 import point_calc as pc
 
 from telegram_bot.handlers import send_message_to_telegram, fetch_file, get_openai_response, analyze_image_with_openai, download_file
-import telegram_bot.locationhandler
 import telegram_bot.parametershandler
 
 port = 'COM3' # use this port for Windows
@@ -57,15 +56,15 @@ def telegram_webhook():
         if "text" in update["message"]:
             text = update['message']['text']
             parameter_handler.add_text(text)
-            topic_nr, pattern = parameter_handler.map_topic_to_pattern()
+            pattern = parameter_handler.map_topic_to_pattern(text) # don't use accumulate text here
             
             if parameter_handler.shape == "none" or parameter_handler.shape == "circle":
                 parameter_handler.shape = "circle"
                 parameter_handler.set_diameter("text", text)
 
-            ai_response = "dev mode" #get_openai_response(text)
+            ai_response = get_openai_response(text)
             send_message_to_telegram(chat_id, f"OpenAI response: {ai_response}")
-            send_message_to_telegram(chat_id, f"Topic number: {topic_nr}, Pattern: {pattern}")
+            send_message_to_telegram(chat_id, f"Pattern: {pattern}")
 
         if "photo" in update["message"]:
             print("photo received")
@@ -110,9 +109,6 @@ def hello():
         'feed_rate': slicer_handler.params['feed_rate'],
         'layer_hight': slicer_handler.params['layer_hight'],
     })
-    emit('toolpath_options', {
-        'linelength': shape_handler.params_toolpath['linelength']
-    })
 
 @socketio.on('slicer_options')
 def slicer_options(data):
@@ -121,11 +117,6 @@ def slicer_options(data):
     slicer_handler.params['feed_rate'] = data["feed_rate"]
     slicer_handler.params['layer_hight'] = data["layer_hight"]
 
-@socketio.on('toolpath_options')
-def toolpath_options(data):
-    print("toolpath_options socket")
-    shape_handler.params_toolpath["linelength"] = data["linelength"]
-    print(shape_handler.params_toolpath, data)
 
 @socketio.on('layer')
 def setLayer(data):

@@ -4,6 +4,7 @@ import math
 from skimage.io import imread
 import librosa
 import os
+from telegram_bot.handlers import openai_text_classification
 
 class ParametersHandler():
     def __init__(self, pattern):
@@ -14,6 +15,7 @@ class ParametersHandler():
         self.diameter = (0,0)
         self.growth_direction = (0, 0),
         self.rotation = 0
+        self.bugs = 0
 
     def set_diameter(self, input_type, input):
         if input_type == "text":
@@ -62,11 +64,18 @@ class ParametersHandler():
             "diameter": self.diameter,
             "growth_direction": self.growth_direction,
             "pattern": self.pattern,
-            "rotation": self.rotation
+            "rotation": self.rotation,
+            "bugs": self.bugs
         }
+        self.bugs = 0
         return data
     
-    def map_topic_to_pattern(self):
+    def map_topic_to_pattern(self, text):
+     pattern = openai_text_classification(text)
+     self.pattern = pattern
+     if "bug" in text:
+         self.bugs += 1
+     return pattern
      vecotrizer = joblib.load("models\Text_vectorizer.pkl")
      text = vecotrizer.transform([self.accumulated_text])
      topic_extractor = joblib.load("models\Topic_extractor.pkl")

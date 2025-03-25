@@ -64,23 +64,6 @@
 						<vue-range-slider :tooltip="null" :min="+0.5" :max="+2.5" step="+0.25" ref="slider"
 							v-model="slicer_options.layer_hight"></vue-range-slider>
 					</div>
-					<div class="shape">
-						<h4>Shapes</h4>
-						<p>Line Length: [[ parseInt(toolpath_options.linelength) ]]</p>
-						<vue-range-slider :tooltip="null" :min="20" :max="60" :step="5" ref="slider"
-							v-model="toolpath_options.linelength"></vue-range-slider>
-					</div>
-					<div class="toolpath">
-						<h4>Pattern</h4>
-						<select name="Toolpath Type" class="form-control" v-model="toolpath_type">
-							<option value="straight">Straight</option>
-							<option value="wave">Wave</option>
-							<option value="jagged">Jagged</option>
-							<option value="loop">Loop</option>
-							<option value="rectangle">Rectangle</option>
-							<option value="cross_stitch">Cross Stitch</option>
-						</select>
-					</div>
 				</div>
 			</div>
 		</div>

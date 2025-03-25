@@ -52,12 +52,6 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             },
             deep: true
         },
-        toolpath_options: {
-            handler: function (newValue, oldValue) {
-                socket.emit('toolpath_options', this.toolpath_options);
-            },
-            deep: true
-        },
         toolpath_type: function (newValue, oldValue) {
             socket.emit('toolpath_type', {'toolpath_type': newValue});
         },

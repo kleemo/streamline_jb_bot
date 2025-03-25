@@ -85,3 +85,35 @@ def analyze_image_with_openai(image_url):
 )
     return response.choices[0].message.content
 
+def openai_text_classification(user_msg):
+    system_msg = "You are an assistant that classifies user messages into communication patterns."
+    user_prompt = f"""
+Given the following user message, classify it into one of the following patterns:
+- Straight: straightforward, to the point
+- Jagged: exploration in depth or playful
+- Rectangular: detached, indifferent
+Examples:
+
+1. "This color does not suite you." → Straight  
+2. "I don't like this food. It is to smelly." → Straight
+3. "Well, there are multiple ways to look at this. Let’s start from the beginning..." → Jagged 
+4. "Whatever. That’s fine I guess." → Rectangular 
+5. "yeah wathever I don't care" → Rectangular
+6. "Ooooh, that’s a fun idea! Let’s go wild with it 😄" → Jagged  
+
+Respond only with the pattern name.
+
+Message:
+\"\"\"{user_msg}\"\"\"
+"""
+
+    response = client.chat.completions.create(
+    model="gpt-4",
+        messages=[
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": user_prompt}
+        ],
+        temperature=0.2  # for consistent classification
+    )
+    ai_response = response.choices[0].message.content.strip().lower()
+    return ai_response

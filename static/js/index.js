@@ -11,10 +11,6 @@ socket.on('layer', (data) => {
 socket.on('slicer_options', (data) => {
     vm.slicer_options = data
 });
-socket.on('toolpath_options', (data) => {
-    //console.log(data)
-    vm.toolpath_options = data
-});
 
 socket.on('connected', (data) => {
     vm.connected = data.connected
