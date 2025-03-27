@@ -57,7 +57,8 @@ def get_openai_response(user_message): #to improve keep a conversation history p
     conversation_history.append({"role": "user", "content": user_message})
     response = client.chat.completions.create(
     model="gpt-4o-mini",
-    messages=conversation_history
+    messages=conversation_history,
+    max_tokens=100,
     )
     ai_response = response.choices[0].message.content
     conversation_history.append({"role": "assistant", "content": ai_response})

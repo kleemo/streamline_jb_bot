@@ -28,7 +28,7 @@ class Slicerhandler:
         self.params = {
             "extrusion_rate": 0.8,
             "feed_rate": 1000,
-            "layer_hight": 1.25
+            "layer_hight": 0.75
         }
 
     def create(self, height, points):

@@ -32,7 +32,7 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         slicer_options: {
             extrusion_rate: 0,
             feed_rate: 0,
-            layer_hight: 1.5
+            layer_hight: 0.75
         },
         toolpath_options: {
             linelength: 50

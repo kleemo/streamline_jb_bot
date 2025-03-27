@@ -51,7 +51,7 @@ class Shapehandler:
             "diameter": (0,0),
             "growth_direction": (0, 0),
             "pattern": "none",
-            "pattern_spacing":3,
+            "pattern_spacing":5,
             "pattern_strength":3,
             "rotation": 0,
             "bugs": 0
@@ -360,7 +360,7 @@ class Shapehandler:
                         if j == random_index: # generate buggy line
                             new_point = start + j * segment_length * direction
                             pattern_line.append(new_point)
-                            perpendicular = np.array([-direction[1],direction[0], 0]) * 10
+                            perpendicular = np.array([-direction[1],direction[0], 0]) * 15
                             pattern_line.append(new_point - perpendicular)
                             pattern_line.append(new_point + direction *2 - perpendicular)
                             pattern_line.append(new_point)
@@ -406,8 +406,8 @@ class Shapehandler:
                             pattern_line.append(new_point)
                             direction = pc.normalize(pc.vector(pc.point(self.center[0],self.center[1],0), new_point))
                             perpendicular = np.array([-direction[1], direction[0], 0])
-                            pattern_line.append(new_point - 10*perpendicular)
-                            pattern_line.append(new_point + direction *2 - 10*perpendicular)
+                            pattern_line.append(new_point + 13*direction)
+                            pattern_line.append(new_point + direction *13 - 5*perpendicular)
                             pattern_line.append(new_point)
                             print("Buggy line")
                     if i % self.parameters["pattern_spacing"] == 0 or i == len(guide_points)-1:

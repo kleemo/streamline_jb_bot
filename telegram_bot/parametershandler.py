@@ -26,11 +26,11 @@ class ParametersHandler():
             input_length = len(input)
             input_min = 1  # Minimum possible length of the input
             input_max = 400  # Maximum possible length of the input (adjust as needed)
-            min_range = 15
-            max_range = 65
+            min_range = 30
+            max_range = 110
             mapped_length = min_range + ((input_length - input_min) / (input_max - input_min)) * (max_range - min_range)
             mapped_length = max(min(mapped_length, max_range), min_range)
-            self.diameter = (mapped_length, word_density * 160)
+            self.diameter = (mapped_length, word_density * 180)
         if input_type == "image":
             img = imread(input, as_gray=True)
             # Calculate the average brightness (pixel intensity ranges from 0 to 1)

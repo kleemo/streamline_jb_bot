@@ -90,7 +90,7 @@ def telegram_webhook():
             file_id = voice["file_id"]
             file_url = fetch_file(file_id)
             voice_file_path = download_file(file_url, "voice.ogg")
-            if parameter_handler.shape == "none":
+            if parameter_handler.shape == "none" or parameter_handler.shape == "rectangle":
                 parameter_handler.shape = "rectangle"
                 parameter_handler.set_diameter("voice", voice_file_path)
             
@@ -206,11 +206,15 @@ def start_print(data, wobble):
     print("start_print socket")
     global printing
     global toggle_state
+    global parameter_handler
 
     if(printing):
         print("Already printing. Cannot start a new print job.")
         printing = False
         return
+    while parameter_handler.shape == "none":
+        print("waiting for shape")
+        time.sleep(4)
 
     original_points = []
     for point in data:
@@ -224,13 +228,14 @@ def start_print(data, wobble):
 
     print_handler.send(slicer_handler.start())
 
-    while print_handler.is_printing():
-        time.sleep(0.1)
+    while (print_handler.is_printing() and parameter_handler.shape == "none"):
+        print("waiting for printer to finish setup")
+        time.sleep(1)
 
     global layer
     global height
     global height_max
-    global parameter_handler
+    
     global shape_handler
 
     while printing:
@@ -244,7 +249,7 @@ def start_print(data, wobble):
 
 
         # create the shape points
-        if layer % 6 == 0:
+        if layer % 4 == 0:
             #update parameters every 6 layers
             shape_handler.update_parameters(parameter_handler.get_parameters())
         points = shape_handler.generate_next_layer()
@@ -258,14 +263,13 @@ def start_print(data, wobble):
             
             while (print_handler.is_printing() or print_handler.is_paused()):
                 time.sleep(2)
-                print(print_handler.status())
+                print("print status :",print_handler.status())
 
             # update layer height
             layer = layer + 1
             height = height + slicer_handler.params['layer_hight']
             emit('layer', {'layer': layer}) #"We are on Layer" – Output
-
-            time.sleep(3)  # Wait 3 seconds
+            time.sleep(2)  # Wait 3 seconds
             
             
 
