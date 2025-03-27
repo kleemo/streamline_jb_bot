@@ -12,3 +12,6 @@ For chat text classification and completion we use the openAI API.
 To send text messages back to the user we use the Telegram API.
 ## 3D printer communication
 To communicate with the 3D printer Printrund suite https://github.com/kliment/Printrun was used.
+
+# 3D Simulation
+For testing during developing and documentation you can view some of the generated 3d shape on this website: https://spectacular-hotteok-47e6cf.netlify.app/
