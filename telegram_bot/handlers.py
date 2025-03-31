@@ -89,20 +89,28 @@ def analyze_image_with_openai(image_url):
 def openai_text_classification(user_msg):
     system_msg = "You are an assistant that classifies user messages into communication patterns."
     user_prompt = f"""
-Given the following user message, classify it into one of the following patterns:
+Given the following user message history, classify it into one of the following patterns and give a score from 0 to 1 for each pattern. In addition give a score indicating the overall emotional intensity of the text, also ranging from 0 to 1. :
 - Straight: straightforward, to the point
 - Jagged: exploration in depth or playful
-- Rectangular: detached, indifferent
+- Rectangular: frustration, anger, or sarcasm
 Examples:
 
 1. "This color does not suite you." → Straight  
 2. "I don't like this food. It is to smelly." → Straight
 3. "Well, there are multiple ways to look at this. Let’s start from the beginning..." → Jagged 
-4. "Whatever. That’s fine I guess." → Rectangular 
+4. "This so annoying I just want it to be over." → Rectangular 
 5. "yeah wathever I don't care" → Rectangular
+6. "Can't they do one thing right?" → Rectangular
 6. "Ooooh, that’s a fun idea! Let’s go wild with it 😄" → Jagged  
 
-Respond only with the pattern name.
+Respond in this format:
+    
+    {{
+        "straight": "<straight_score>",
+        "jagged": "<jagged_score>",
+        "rectangular": "<rectangular_score>",
+        "emotional_intensity": "<emotional_intensity_score>"
+    }}
 
 Message:
 \"\"\"{user_msg}\"\"\"
@@ -116,5 +124,7 @@ Message:
         ],
         temperature=0.2  # for consistent classification
     )
+    
     ai_response = response.choices[0].message.content.strip().lower()
+    print(f"AI response: {ai_response}")
     return ai_response

@@ -16,6 +16,10 @@ class ParametersHandler():
         self.growth_direction = (0, 0),
         self.rotation = 0
         self.bugs = 0
+        self.pattern_height = 4
+        self.pattern_width = 4
+        self.pattern_spacing = 5
+        self.inactive = False
 
     def set_diameter(self, input_type, input):
         if input_type == "text":
@@ -26,18 +30,18 @@ class ParametersHandler():
             input_length = len(input)
             input_min = 1  # Minimum possible length of the input
             input_max = 400  # Maximum possible length of the input (adjust as needed)
-            min_range = 30
-            max_range = 110
+            min_range = 40
+            max_range = 120
             mapped_length = min_range + ((input_length - input_min) / (input_max - input_min)) * (max_range - min_range)
             mapped_length = max(min(mapped_length, max_range), min_range)
-            self.diameter = (mapped_length, word_density * 180)
+            self.diameter = (mapped_length, word_density * 190)
         if input_type == "image":
             img = imread(input, as_gray=True)
             # Calculate the average brightness (pixel intensity ranges from 0 to 1)
             avg_brightness = np.mean(img)
             median_brightness = np.median(img)
             # Map the average brightness to a value between 10 and 100
-            self.diameter = (10 + 90 * avg_brightness, 10 + 90 * median_brightness)
+            self.diameter = (20 + 100 * avg_brightness, 12 + 100 * median_brightness)
         if input_type == "voice":
             input_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), input)
             if not os.path.exists(input_path):
@@ -65,37 +69,43 @@ class ParametersHandler():
             "growth_direction": self.growth_direction,
             "pattern": self.pattern,
             "rotation": self.rotation,
-            "bugs": self.bugs
+            "bugs": self.bugs,
+            "pattern_height": self.pattern_height,
+            "pattern_width": self.pattern_width,
+            "pattern_spacing": self.pattern_spacing,
+            "inactive": self.inactive,
         }
         self.bugs = 0
         return data
     
-    def map_topic_to_pattern(self, text):
-     pattern = openai_text_classification(text)
-     self.pattern = pattern
-     if "bug" in text:
-         self.bugs += 1
-     return pattern
-     vecotrizer = joblib.load("models\Text_vectorizer.pkl")
-     text = vecotrizer.transform([self.accumulated_text])
-     topic_extractor = joblib.load("models\Topic_extractor.pkl")
-     topic_list = topic_extractor.transform(text)[0]
-     topic_nr = np.argmax(topic_list) + 1
-
-     if topic_nr == 4:
-         self.pattern = "jagged"
-     elif topic_nr == 5:
-         self.pattern = "rectangle"
-     elif topic_nr == 8:
-         self.pattern = "straight"
-     elif topic_nr == 9:
-         self.pattern = "straight"
-     elif topic_nr == 10:
-         self.pattern = "straight"
-     else:
-         self.pattern = "straight"
-         
-     return topic_nr, self.pattern
+    def map_topic_to_pattern(self):
+     ai_classification = openai_text_classification(self.accumulated_text)
+     # Parse the response to extract scores
+     try:
+        scores = eval(ai_classification)  # Convert string representation of dict to actual dict
+        straight_score = float(scores.get("straight", 0))
+        jagged_score = float(scores.get("jagged", 0))
+        rectangular_score = float(scores.get("rectangular", 0))
+        emotional_score = float(scores.get("emotional_intensity", 0))
+        
+        self.pattern_spacing = 3 + emotional_score*3
+        # Return the pattern with the highest score
+        if 0 >= jagged_score and 0 >= rectangular_score:
+            self.pattern = "straight"
+        elif rectangular_score > 0:
+            self.pattern = "rectangular"
+            self.pattern_height = 2 + jagged_score*3
+            self.pattern_width = 2 + rectangular_score*4
+        else:
+            self.pattern = "jagged"
+            self.pattern_width = 2 + rectangular_score*3
+            self.pattern_height = 2 + jagged_score*3
+        print(f"Scores: Straight: {straight_score}, Jagged: {jagged_score}, Rectangular: {rectangular_score}")
+     except Exception as e:
+        print(f"Error parsing AI response: {e}")
+     #if "bug" in text:
+      #   self.bugs += 1
+     return self.pattern
 
     def set_rotation(self, layer):
         if layer <= 0:
@@ -112,4 +122,6 @@ class ParametersHandler():
     def add_text(self, text):
         self.accumulated_text += " "
         self.accumulated_text += text
+        if len(text) < 2:
+            self.inactive = True
     

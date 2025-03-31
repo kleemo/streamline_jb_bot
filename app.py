@@ -56,7 +56,7 @@ def telegram_webhook():
         if "text" in update["message"]:
             text = update['message']['text']
             parameter_handler.add_text(text)
-            pattern = parameter_handler.map_topic_to_pattern(text) # don't use accumulate text here
+            pattern = parameter_handler.map_topic_to_pattern() # use accumulate text here
             
             if parameter_handler.shape == "none" or parameter_handler.shape == "circle":
                 parameter_handler.shape = "circle"
@@ -214,7 +214,7 @@ def start_print(data, wobble):
         return
     while parameter_handler.shape == "none":
         print("waiting for shape")
-        time.sleep(4)
+        time.sleep(3)
 
     original_points = []
     for point in data:

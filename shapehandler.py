@@ -51,10 +51,12 @@ class Shapehandler:
             "diameter": (0,0),
             "growth_direction": (0, 0),
             "pattern": "none",
-            "pattern_spacing":5,
-            "pattern_strength":3,
+            "pattern_spacing":5, #between 3 and 6
+            "pattern_strength":3, #between 2 and 5
+            "pattern_width":4, #between 2 and 5
             "rotation": 0,
-            "bugs": 0
+            "bugs": 0,
+            "inactive": False,
         }
 
     def update_transformations(self):
@@ -292,6 +294,14 @@ class Shapehandler:
         self.parameters["pattern"] = data["pattern"]
         self.parameters["rotation"] = data["rotation"]
         self.parameters["bugs"] = data["bugs"]
+        self.parameters["pattern_strength"] = data["pattern_height"]
+        self.parameters["pattern_width"] = data["pattern_width"]
+        self.parameters["inactive"] = data["inactive"]
+        pattern_spacing = int(data["pattern_spacing"])
+        if pattern_spacing > self.parameters["pattern_spacing"]:
+            self.parameters["pattern_spacing"]+=1
+        if pattern_spacing < self.parameters["pattern_spacing"]:
+            self.parameters["pattern_spacing"]-=1
         if set(self.current_diameter) == {0}:
             self.current_diameter = self.parameters["diameter"]
         print("Updated parameters: ", self.parameters)
@@ -313,13 +323,16 @@ class Shapehandler:
                     self.pattern_width -= 0.4
                 else:
                     self.pattern_width = 0
-        if self.parameters["pattern"] == "rectangular" and self.pattern_width < self.parameters["pattern_spacing"]:
+        if self.parameters["pattern"] == "rectangular" and self.pattern_width < self.parameters["pattern_width"]:
                 self.pattern_width += 0.4
                 print("Pattern width: ", self.pattern_width)
 
     def generate_next_layer(self):
         guide_points = []
         pattern_line = []
+        spacial_index = -1
+        if self.parameters["inactive"]:
+            spacial_index = self.parameters["pattern_spacing"] * 2
         center_distance = pc.distance(self.center,self.parameters["growth_direction"])
         if center_distance > 0.4:
                 direction = pc.normalize(pc.vector(np.array(self.center), np.array(self.parameters["growth_direction"])))
@@ -355,7 +368,7 @@ class Shapehandler:
                     if self.parameters["bugs"] > 0:
                         self.parameters["bugs"] -= 1
                         random_index = random.randint(0, num_points-1) 
-
+                    per_mult = 1
                     for j in range(num_points):
                         if j == random_index: # generate buggy line
                             new_point = start + j * segment_length * direction
@@ -365,13 +378,12 @@ class Shapehandler:
                             pattern_line.append(new_point + direction *2 - perpendicular)
                             pattern_line.append(new_point)
                             print("Buggy line")
-                        if j % self.parameters["pattern_spacing"] == 0 or j == num_points-1:
+                        if j!= spacial_index and (j % self.parameters["pattern_spacing"] == 0 or j == num_points-1):
                             new_point = start + j * segment_length * direction
                             perpendicular = np.array([-direction[1], direction[0], 0]) * self.pattern_height
-                            if j % 2 == 0:
-                                new_point += perpendicular
-                            else:    
-                                new_point -= perpendicular
+                            
+                            new_point += (perpendicular* per_mult)
+                            per_mult *= -1
                             if self.pattern_width > 0:
                                 pattern_line.append(new_point - (direction * (self.pattern_width*0.5)))
                                 pattern_line.append(new_point + (direction * (self.pattern_width*0.5)))
@@ -399,7 +411,7 @@ class Shapehandler:
                 if self.parameters["bugs"] > 0:
                     self.parameters["bugs"] -= 1
                     random_index = random.randint(0, len(guide_points)-1) 
-
+                per_mult = 1
                 for i in range(len(guide_points)):
                     if i == random_index: # generate buggy line
                             new_point = guide_points[i]
@@ -410,14 +422,12 @@ class Shapehandler:
                             pattern_line.append(new_point + direction *13 - 5*perpendicular)
                             pattern_line.append(new_point)
                             print("Buggy line")
-                    if i % self.parameters["pattern_spacing"] == 0 or i == len(guide_points)-1:
+                    if i!=spacial_index and (i % self.parameters["pattern_spacing"] == 0 or i == len(guide_points)-1):
                         point = guide_points[i]
                         direction = pc.normalize(pc.vector(pc.point(self.center[0],self.center[1],0), point))
                         perpendicular = np.array([-direction[1], direction[0], 0])
-                        if i % 2 == 0:
-                            point += (direction*self.pattern_height)
-                        else:
-                            point -= (direction*self.pattern_height)
+                        point += (direction*self.pattern_height * per_mult)
+                        per_mult *= -1
                         if self.pattern_width > 0:
                             pattern_line.append(point - (perpendicular * (self.pattern_width*0.5)))
                             pattern_line.append(point + (perpendicular * (self.pattern_width*0.5)))
