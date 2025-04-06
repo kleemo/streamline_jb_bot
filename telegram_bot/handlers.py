@@ -82,7 +82,7 @@ def analyze_image_with_openai(image_url):
             ],
         }
     ],
-    max_tokens=300,
+    max_tokens=200,
 )
     return response.choices[0].message.content
 
@@ -130,6 +130,22 @@ Message:
     return ai_response
 
 def openai_text_embedding(user_msg):
-    vector = []
-    
-    return vector
+    response = client.embeddings.create(
+        model="text-embedding-3-small",
+        input=user_msg,
+        encoding_format="float",
+        dimensions=40,
+        )
+    embedding = response.data[0].embedding
+    return embedding
+
+def openai_emotional_score(user_msg):
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "user", "content": f"Rate the emotional intensity of the following text with 1, 2 or 3, only answer with integer score: {user_msg}"}
+        ],
+        temperature=0.2  # for consistent classification
+    )
+    ai_response = response.choices[0].message.content.strip().lower()
+    return ai_response

@@ -13,7 +13,7 @@ import shapehandler
 import slicerhandler
 import point_calc as pc
 
-from telegram_bot.handlers import send_message_to_telegram, fetch_file, get_openai_response, analyze_image_with_openai, download_file
+from telegram_bot.handlers import send_message_to_telegram, fetch_file, get_openai_response, download_file, analyze_image_with_openai
 import telegram_bot.parametershandler
 
 port = 'COM3' # use this port for Windows
@@ -55,27 +55,28 @@ def telegram_webhook():
 
         if "text" in update["message"]:
             text = update['message']['text']
-            parameter_handler.add_text(text)
-            pattern = parameter_handler.map_topic_to_pattern() # use accumulate text here
-            
+            #pattern = parameter_handler.map_topic_to_pattern()
+
+            ai_response = get_openai_response(text)
+            parameter_handler.add_text(text+" " + ai_response)
+            parameter_handler.set_feature_vector(text)
             if parameter_handler.shape == "none" or parameter_handler.shape == "circle":
                 parameter_handler.shape = "circle"
                 parameter_handler.set_diameter("text", text)
-
-            ai_response = get_openai_response(text)
             send_message_to_telegram(chat_id, f"OpenAI response: {ai_response}")
-            send_message_to_telegram(chat_id, f"Pattern: {pattern}")
 
         if "photo" in update["message"]:
             print("photo received")
             photo_sizes = update["message"]["photo"]  # List of photo sizes
             file_id = photo_sizes[-1]["file_id"]
             image_url = fetch_file(file_id)
+            ai_response = analyze_image_with_openai(image_url)
+            parameter_handler.add_text(ai_response)
+            parameter_handler.set_feature_vector(ai_response)
             if parameter_handler.shape == "none" or parameter_handler.shape == "rectangle":
                 parameter_handler.shape = "rectangle"
                 parameter_handler.set_diameter("image", image_url)
 
-            ai_response = "dev mode" #analyze_image_with_openai(image_url)
             send_message_to_telegram(chat_id,f"ai response: {ai_response}")
             #send_message_to_telegram(chat_id, f"OpenAI response: {ai_response}")
 

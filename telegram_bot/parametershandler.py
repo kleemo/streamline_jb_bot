@@ -4,7 +4,7 @@ import math
 from skimage.io import imread
 import librosa
 import os
-from telegram_bot.handlers import openai_text_classification
+from telegram_bot.handlers import openai_text_classification, openai_text_embedding, openai_emotional_score
 
 class ParametersHandler():
     def __init__(self, pattern):
@@ -20,6 +20,7 @@ class ParametersHandler():
         self.pattern_width = 4
         self.pattern_spacing = 5
         self.inactive = False
+        self.feature_vector = []
 
     def set_diameter(self, input_type, input):
         if input_type == "text":
@@ -29,19 +30,19 @@ class ParametersHandler():
             # Map the length of the input to a range between 15 and 60
             input_length = len(input)
             input_min = 1  # Minimum possible length of the input
-            input_max = 400  # Maximum possible length of the input (adjust as needed)
-            min_range = 40
-            max_range = 120
+            input_max = 300  # Maximum possible length of the input (adjust as needed)
+            min_range = 50
+            max_range = 100
             mapped_length = min_range + ((input_length - input_min) / (input_max - input_min)) * (max_range - min_range)
             mapped_length = max(min(mapped_length, max_range), min_range)
-            self.diameter = (mapped_length, word_density * 190)
+            self.diameter = (mapped_length, word_density * 230)
         if input_type == "image":
             img = imread(input, as_gray=True)
             # Calculate the average brightness (pixel intensity ranges from 0 to 1)
             avg_brightness = np.mean(img)
             median_brightness = np.median(img)
             # Map the average brightness to a value between 10 and 100
-            self.diameter = (20 + 100 * avg_brightness, 12 + 100 * median_brightness)
+            self.diameter = (40 + 70 * avg_brightness, 40 + 70 * median_brightness)
         if input_type == "voice":
             input_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), input)
             if not os.path.exists(input_path):
@@ -74,6 +75,7 @@ class ParametersHandler():
             "pattern_width": self.pattern_width,
             "pattern_spacing": self.pattern_spacing,
             "inactive": self.inactive,
+            "feature_vector": self.feature_vector,
         }
         self.bugs = 0
         return data
@@ -106,13 +108,29 @@ class ParametersHandler():
      #if "bug" in text:
       #   self.bugs += 1
      return self.pattern
+    
+    def set_feature_vector(self, user_msg):
+        # Convert the text to a vector using OpenAI's text embedding model
+        self.feature_vector = openai_text_embedding(self.accumulated_text)
+        self.feature_vector = [x *40 for x in self.feature_vector]  # Scale the vector to a range
+        emotiaonal_score = openai_emotional_score(user_msg)
+        try:
+            emotiaonal_score = int(emotiaonal_score)
+            print("emotional score: " + str(emotiaonal_score))
+        except:
+            emotiaonal_score = 1
+            print("Error parsing emotional score, defaulting to 1")
+        self.pattern_spacing = 7 - 2*emotiaonal_score # inverse emotional score
+
+        
+        
 
     def set_rotation(self, layer):
         if layer <= 0:
             return
         increase = self.num_input/layer
         if layer > 5:
-            increase *= 10
+            increase *= 20
         self.rotation += increase
   
     def set_new_epoch(self):
@@ -122,6 +140,9 @@ class ParametersHandler():
     def add_text(self, text):
         self.accumulated_text += " "
         self.accumulated_text += text
+        if len(self.accumulated_text) > 800: ## Limit the text to 1000 characters about 140 words
+            self.accumulated_text = self.accumulated_text[-800:] 
+            print("Text too long, truncating...")
         if len(text) < 2:
             self.inactive = True
     

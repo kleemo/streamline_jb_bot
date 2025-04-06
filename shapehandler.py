@@ -24,6 +24,7 @@ class Shapehandler:
         self.pattern_width = 0
         self.current_rotation = 0
         self.current_diameter = (0,0)
+        self.previous_vector = []
         self.parameters = { #new parameters
             "shape": "none",
             "diameter": (0,0),
@@ -35,6 +36,7 @@ class Shapehandler:
             "rotation": 0,
             "bugs": 0,
             "inactive": False,
+            "feature_vector": [],
         }
     
     
@@ -57,6 +59,7 @@ class Shapehandler:
         self.parameters["pattern_strength"] = data["pattern_height"]
         self.parameters["pattern_width"] = data["pattern_width"]
         self.parameters["inactive"] = data["inactive"]
+        self.parameters["feature_vector"] = data["feature_vector"]
         pattern_spacing = int(data["pattern_spacing"])
         if pattern_spacing > self.parameters["pattern_spacing"]:
             self.parameters["pattern_spacing"]+=1
@@ -86,8 +89,90 @@ class Shapehandler:
         if self.parameters["pattern"] == "rectangular" and self.pattern_width < self.parameters["pattern_width"]:
                 self.pattern_width += 0.4
                 print("Pattern width: ", self.pattern_width)
+    
+    def generate_rectangle(self,y_displacement):
+        points = []
+        guide_points = []
+        length = self.current_diameter[0]
+        heigth = self.current_diameter[1]
 
+        guide_points.append(pc.point(self.center[0]-length/2, self.center[1] -heigth/2, 0))
+        guide_points.append(pc.point(self.center[0]+length/2, self.center[1] -heigth/2, 0))
+        guide_points.append(pc.point(self.center[0]+length/2, self.center[1]+heigth/2, 0))
+        guide_points.append(pc.point(self.center[0]-length/2, self.center[1]+heigth/2, 0))
+        guide_points.append(pc.point(self.center[0]-length/2, self.center[1]-heigth/2, 0))
+
+        for i in range(len(guide_points)-1):
+            start = guide_points[i]
+            end = guide_points[i+1]
+            # Calculate the direction vector
+            direction = pc.normalize(pc.vector(start, end))
+            distance = pc.distance(start, end)
+            num_points = int(len(y_displacement)/4)  # Number of points to generate for the line
+            segment_length = distance / num_points 
+            for j in range(num_points):
+                new_point = start + j * segment_length * direction
+                perpendicular = np.array([-direction[1], direction[0], 0])
+                points.append(new_point + (perpendicular * y_displacement[(i*num_points)+j]))
+
+        return points
+    
+    def generate_circle(self,y_displacement):
+        points = []	
+        radius_x = self.current_diameter[0] / 2
+        radius_y = self.current_diameter[1] / 2
+        num_points = len(y_displacement)  # Number of points to generate for the circle
+
+        for i in range(num_points):
+            angle = 2 * np.pi * i / num_points
+            x = self.center[0] + radius_x * np.cos(angle)
+            y = self.center[1] + radius_y * np.sin(angle)
+            new_point = pc.point(x, y, 0)
+            direction = pc.normalize(pc.vector(pc.point(self.center[0],self.center[1],0), new_point))
+            points.append(new_point + (direction * y_displacement[i]))
+            if i == num_points - 1:
+                points.append(points[0])
+        return points
+    
+    def generate_path(self):
+         y_displacement = []
+         smooth_factor = self.parameters["pattern_spacing"]
+         if len(self.parameters["feature_vector"]) < 1:
+            return
+         # generate path from feature vector
+         if self.previous_vector == []:
+            self.previous_vector = self.parameters["feature_vector"]
+         
+         for i in range(smooth_factor*len(self.parameters["feature_vector"])): #add 0 in between feautures
+            j = int(i/smooth_factor)
+            dy = (self.parameters["feature_vector"][j] - self.previous_vector[j])*0.1
+            y = self.previous_vector[j] + dy
+            y_displacement.append(y)
+            self.previous_vector[j] = y
+         return y_displacement
+    
     def generate_next_layer(self):
+        points = []
+        y_displacement = self.generate_path()
+        # gradually update shape parameters
+        center_distance = pc.distance(self.center,self.parameters["growth_direction"])
+        if center_distance > 0.4:
+            direction = pc.normalize(pc.vector(np.array(self.center), np.array(self.parameters["growth_direction"])))
+            self.center += (direction * 0.3)
+        diameter_distance = pc.distance(self.current_diameter,self.parameters["diameter"])
+        if diameter_distance > 1:
+            direction = pc.normalize(pc.vector(np.array(self.current_diameter), np.array(self.parameters["diameter"])))
+            self.current_diameter += direction 
+            print("current_diameter: ", self.current_diameter)
+
+        if self.parameters["shape"] == "rectangle":
+            points = self.generate_rectangle(y_displacement)
+        elif self.parameters["shape"] == "circle":
+            points = self.generate_circle(y_displacement)
+            
+        return points
+
+    def generate_next_layer_old(self):
         guide_points = []
         pattern_line = []
         spacial_index = -1
