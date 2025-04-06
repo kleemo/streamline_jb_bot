@@ -125,68 +125,6 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
                 this.pauseLable = "Pause";
                 console.log("Printer resumed");
             }
-        },
-        // functionality for the drawing thingy
-        draw(e) {
-            var pt = svg.createSVGPoint();  // Created once for document
-
-            pt.x = e.clientX;
-            pt.y = e.clientY;
-
-            // The cursor point, translated into svg coordinates
-            var cursorpt =  pt.matrixTransform(svg.getScreenCTM().inverse());
-            // console.log("(" + cursorpt.x + ", " + cursorpt.y + ")");
-
-            this.points.push([cursorpt.x, cursorpt.y]);
-            // this.points.push([e.offsetX, e.offsetY]);
-            // this.drawPoints();
-        },
-        loadCircle(e, points = 10, radius = 50, center = [75,75]) {
-            this.points = [];
-            var slice = 2 * Math.PI / points;
-            for (var i = 0; i < points; i++)
-            {
-                var angle = slice * i;
-                var newX = Math.floor(center[0] + radius * Math.cos(angle));
-                var newY = Math.floor(center[1] + radius * Math.sin(angle));
-                var p = [newX, newY];
-                this.points.push(p);
-            }
-        },
-        shapeCloseOpen(e) {
-            this.shapeOpen = !this.shapeOpen;
-        },
-        startDrag(e) {
-            this.draggedElement = e.target;
-        },
-        drag(e) {
-            var pt = svg.createSVGPoint();  // Created once for document
-
-            pt.x = e.clientX;
-            pt.y = e.clientY;
-
-            // The cursor point, translated into svg coordinates
-            var cursorpt =  pt.matrixTransform(svg.getScreenCTM().inverse());
-            // console.log("(" + cursorpt.x + ", " + cursorpt.y + ")");
-
-            if(this.draggedElement != null) {
-                this.points[this.draggedElement.id][0] = cursorpt.x;
-                this.points[this.draggedElement.id][1] = cursorpt.y;
-                // array needs to be destroyed and copied to triger the reactivity from vue
-                this.points = this.points.slice();
-            }
-        },
-        endDrag(e) {
-            this.draggedElement = null;
-        },
-        emptyPoints(e) {
-            this.points = [];
         }
     },
-    mounted() {
-        var svg = document.getElementById("svg");
-        window.addEventListener('resize', () => {
-            this.windowWidth = window.innerWidth
-        })
-    }
 })

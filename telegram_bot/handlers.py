@@ -61,7 +61,7 @@ def get_openai_response(user_message): #to improve keep a conversation history p
     max_tokens=100,
     )
     ai_response = response.choices[0].message.content
-    conversation_history.append({"role": "assistant", "content": ai_response})
+    conversation_history.append({"role": "system", "content": ai_response})
     return ai_response  
 
 # Analyze an image using its URL with OpenAI
@@ -128,3 +128,8 @@ Message:
     ai_response = response.choices[0].message.content.strip().lower()
     print(f"AI response: {ai_response}")
     return ai_response
+
+def openai_text_embedding(user_msg):
+    vector = []
+    
+    return vector
