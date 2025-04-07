@@ -13,9 +13,9 @@ import shapehandler
 import slicerhandler
 import point_calc as pc
 
-from telegram_bot.handlers import send_message_to_telegram, fetch_file, get_openai_response, download_file, analyze_image_with_openai
+from telegram_bot.handlers import send_message_to_telegram, fetch_file, get_openai_response, download_file, analyze_image_with_openai, append_to_chat_history
 import telegram_bot.parametershandler
-
+welcome_mesage = "Hello and welcome! This isn’t just a chatbot. It’s a guide through an invisible landscape—one that shifts with every thought you share. As we talk, a living shape grows from our conversation.Type anything to begin the journey."
 port = 'COM3' # use this port for Windows
 # port = '/dev/tty.usbmodem14101' # use this port value for Aurelian
 baud = 115200 # baud rate as defined in the streamline-delta-arduino firmware
@@ -24,6 +24,7 @@ baud = 115200 # baud rate as defined in the streamline-delta-arduino firmware
 print_handler = DefaultUSBHandler(port, baud)
 slicer_handler = slicerhandler.Slicerhandler()
 shape_handler = shapehandler.Shapehandler()
+chat_activity = 0
 
 parameter_handler = telegram_bot.parametershandler.ParametersHandler("straight")
 
@@ -47,23 +48,28 @@ def telegram_webhook():
     update = request.json  # Get the JSON payload from Telegram
     global parameter_handler
     global layer
+    global chat_activity
+    global welcome_mesage
     
     if 'message' in update:
         chat_id = update['message']['chat']['id']
         parameter_handler.num_input += 1
+        chat_activity += 1
         parameter_handler.set_rotation(layer)
 
         if "text" in update["message"]:
             text = update['message']['text']
-            #pattern = parameter_handler.map_topic_to_pattern()
+            if text == "/start":
+                send_message_to_telegram(chat_id, welcome_mesage)
+                return '', 200 
 
             ai_response = get_openai_response(text)
-            parameter_handler.add_text(text+" " + ai_response)
-            parameter_handler.set_feature_vector(text)
+            parameter_handler.add_text(text, ai_response)
+            parameter_handler.set_pattern_parameters()
             if parameter_handler.shape == "none" or parameter_handler.shape == "circle":
                 parameter_handler.shape = "circle"
                 parameter_handler.set_diameter("text", text)
-            send_message_to_telegram(chat_id, f"OpenAI response: {ai_response}")
+            send_message_to_telegram(chat_id, f"streamline: {ai_response}")
 
         if "photo" in update["message"]:
             print("photo received")
@@ -71,13 +77,14 @@ def telegram_webhook():
             file_id = photo_sizes[-1]["file_id"]
             image_url = fetch_file(file_id)
             ai_response = analyze_image_with_openai(image_url)
-            parameter_handler.add_text(ai_response)
-            parameter_handler.set_feature_vector(ai_response)
+            parameter_handler.add_text("",ai_response)
+            parameter_handler.set_pattern_parameters()
+            append_to_chat_history(ai_response)
             if parameter_handler.shape == "none" or parameter_handler.shape == "rectangle":
                 parameter_handler.shape = "rectangle"
                 parameter_handler.set_diameter("image", image_url)
 
-            send_message_to_telegram(chat_id,f"ai response: {ai_response}")
+            send_message_to_telegram(chat_id,f"image description: {ai_response}")
             #send_message_to_telegram(chat_id, f"OpenAI response: {ai_response}")
 
         if "location" in update["message"]:
@@ -91,11 +98,8 @@ def telegram_webhook():
             file_id = voice["file_id"]
             file_url = fetch_file(file_id)
             voice_file_path = download_file(file_url, "voice.ogg")
-            if parameter_handler.shape == "none" or parameter_handler.shape == "rectangle":
-                parameter_handler.shape = "rectangle"
-                parameter_handler.set_diameter("voice", voice_file_path)
             
-            send_message_to_telegram(chat_id, f"Received your voice message:")
+            send_message_to_telegram(chat_id, f"voice message function not yet impelemented")
 
         
 
@@ -236,8 +240,10 @@ def start_print(data, wobble):
     global layer
     global height
     global height_max
+    global chat_activity
     
     global shape_handler
+    
 
     while printing:
 
@@ -250,8 +256,10 @@ def start_print(data, wobble):
 
 
         # create the shape points
-        if layer % 4 == 0:
-            #update parameters every 6 layers
+        if layer % 3 == 0:
+            #update parameters every 3 layers
+            parameter_handler.handle_inactivity(chat_activity)
+            chat_activity = 0
             shape_handler.update_parameters(parameter_handler.get_parameters())
         points = shape_handler.generate_next_layer()
 
@@ -263,7 +271,7 @@ def start_print(data, wobble):
 
             
             while (print_handler.is_printing() or print_handler.is_paused()):
-                time.sleep(2)
+                time.sleep(1)
                 print("print status :",print_handler.status())
 
             # update layer height

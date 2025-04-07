@@ -30,8 +30,8 @@ class Shapehandler:
             "diameter": (0,0),
             "growth_direction": (0, 0),
             "pattern": "none",
-            "pattern_spacing":5, #between 3 and 6
-            "pattern_strength":3, #between 2 and 5
+            "pattern_spacing":3, #between 3 and 6
+            "pattern_strength":40, #between 2 and 5
             "pattern_width":4, #between 2 and 5
             "rotation": 0,
             "bugs": 0,
@@ -109,11 +109,14 @@ class Shapehandler:
             direction = pc.normalize(pc.vector(start, end))
             distance = pc.distance(start, end)
             num_points = int(len(y_displacement)/4)  # Number of points to generate for the line
-            segment_length = distance / num_points 
-            for j in range(num_points):
+            segment_length = distance / num_points
+            points.append(start) 
+            for j in range(1,num_points - 1):
                 new_point = start + j * segment_length * direction
                 perpendicular = np.array([-direction[1], direction[0], 0])
                 points.append(new_point + (perpendicular * y_displacement[(i*num_points)+j]))
+                if j == num_points - 2:
+                    points.append(end)
 
         return points
     
@@ -141,14 +144,21 @@ class Shapehandler:
             return
          # generate path from feature vector
          if self.previous_vector == []:
+            print("previous vector is empty")
             self.previous_vector = self.parameters["feature_vector"]
          
          for i in range(smooth_factor*len(self.parameters["feature_vector"])): #add 0 in between feautures
             j = int(i/smooth_factor)
-            dy = (self.parameters["feature_vector"][j] - self.previous_vector[j])*0.1
+            dy = 0
+            if self.parameters["inactive"] :
+                dy = (0 - self.previous_vector[j])*0.1
+            else:
+                dy = (self.parameters["feature_vector"][j] - self.previous_vector[j])*0.1
+            
             y = self.previous_vector[j] + dy
             y_displacement.append(y)
             self.previous_vector[j] = y
+
          return y_displacement
     
     def generate_next_layer(self):
@@ -169,6 +179,13 @@ class Shapehandler:
             points = self.generate_rectangle(y_displacement)
         elif self.parameters["shape"] == "circle":
             points = self.generate_circle(y_displacement)
+
+        #appply rotation of layer
+        if self.parameters["rotation"] > self.current_rotation:
+            self.current_rotation += 1
+            #apply rotation to pattern line
+        for i in range(len(points)):
+            points[i] = pc.rotate(points[i],pc.point(self.center[0],self.center[1],0) , self.current_rotation)
             
         return points
 

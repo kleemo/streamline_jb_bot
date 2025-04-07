@@ -9,14 +9,15 @@ from telegram_bot.handlers import openai_text_classification, openai_text_embedd
 class ParametersHandler():
     def __init__(self, pattern):
         self.pattern = pattern
-        self.accumulated_text = ""
+        self.accumulated_chat = ""
+        self.accumulated_user_text = ""
         self.num_input = 0
         self.shape = "none"
         self.diameter = (0,0)
         self.growth_direction = (0, 0),
         self.rotation = 0
         self.bugs = 0
-        self.pattern_height = 4
+        self.pattern_height = 40
         self.pattern_width = 4
         self.pattern_spacing = 5
         self.inactive = False
@@ -81,7 +82,7 @@ class ParametersHandler():
         return data
     
     def map_topic_to_pattern(self):
-     ai_classification = openai_text_classification(self.accumulated_text)
+     ai_classification = openai_text_classification(self.accumulated_chat)
      # Parse the response to extract scores
      try:
         scores = eval(ai_classification)  # Convert string representation of dict to actual dict
@@ -109,18 +110,22 @@ class ParametersHandler():
       #   self.bugs += 1
      return self.pattern
     
-    def set_feature_vector(self, user_msg):
+    def set_pattern_parameters(self):
         # Convert the text to a vector using OpenAI's text embedding model
-        self.feature_vector = openai_text_embedding(self.accumulated_text)
-        self.feature_vector = [x *40 for x in self.feature_vector]  # Scale the vector to a range
-        emotiaonal_score = openai_emotional_score(user_msg)
+        self.feature_vector = openai_text_embedding(self.accumulated_chat)
+        self.feature_vector = [x *self.pattern_height for x in self.feature_vector]  # Scale the vector to a range
+        emotiaonal_score = openai_emotional_score(self.accumulated_user_text)
+        sentiment_score = 1
+        intensity_score = 0.3
+
         try:
-            emotiaonal_score = int(emotiaonal_score)
-            print("emotional score: " + str(emotiaonal_score))
-        except:
-            emotiaonal_score = 1
-            print("Error parsing emotional score, defaulting to 1")
-        self.pattern_spacing = 7 - 2*emotiaonal_score # inverse emotional score
+            scores = eval(emotiaonal_score)  # Convert string representation of dict to actual dict
+            sentiment_score = int(scores.get("sentiment", 1))
+            intensity_score = float(scores.get("intensity", 0.3))
+        except Exception as e:
+            print(f"Error parsing AI response: {e}")
+        self.pattern_spacing = 1 + 2*sentiment_score # adjust emotional score (0-2) to pattern spacing (1,3,5)
+        self.pattern_height = 10 + intensity_score*60
 
         
         
@@ -135,14 +140,21 @@ class ParametersHandler():
   
     def set_new_epoch(self):
         self.num_input = 0
-        self.accumulated_text = ""
+        self.accumulated_chat = ""
 
-    def add_text(self, text):
-        self.accumulated_text += " "
-        self.accumulated_text += text
-        if len(self.accumulated_text) > 800: ## Limit the text to 1000 characters about 140 words
-            self.accumulated_text = self.accumulated_text[-800:] 
+    def add_text(self, user_text, ai_text):
+        self.accumulated_chat += " " + user_text + " " + ai_text
+        if len(self.accumulated_chat) > 800: ## Limit the text to 1000 characters about 140 words
+            self.accumulated_chat = self.accumulated_chat[-800:] 
             print("Text too long, truncating...")
-        if len(text) < 2:
+        self.accumulated_user_text += " " + user_text
+        if len(self.accumulated_user_text) > 800: ## Limit the text to 1000 characters about 140 words
+            self.accumulated_user_text = self.accumulated_user_text[-800:] 
+            print("Text too long, truncating...")
+    
+    def handle_inactivity(self, activity):
+        if activity > 0:
+            self.inactive = False
+        else:
             self.inactive = True
     

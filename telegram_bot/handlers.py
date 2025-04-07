@@ -18,7 +18,10 @@ else:
 client = OpenAI()
 
 conversation_history = [
-    {"role": "system", "content": "You are a helpful assistant."}
+    {
+    "role": "system",
+    "content": "You are a reflective guide who transforms conversations into evolving spatial forms. Each exchange with the user subtly reshapes a path through an imagined landscape—curving, drifting, or unfolding in new directions. Your role is to respond playfully, attentively, and with poetic nuance, revealing layers of thought, emotion, and curiosity. Pay attention to emotional undercurrents, topic shifts, and moments of insight or hesitation. These dynamics are translated into a living 3D shape that represents the journey of the dialogue—a surface shaped by the micro-movements of everyday reflection."
+    }
 ]
 
 def send_message_to_telegram(chat_id, text):
@@ -140,12 +143,30 @@ def openai_text_embedding(user_msg):
     return embedding
 
 def openai_emotional_score(user_msg):
+    prompt = f"""
+    Given the following user message assign a sentiment score of 0,1 or 2, where 0 is negative, 1 is neutral and 2 is positive. In addition give a score indicating the overall emotional intensity of the text, as a float ranging from 0 to 1. : 
+
+    Respond in this format:
+        
+        {{
+            "sentiment": "<sentiment_score>",
+            "intensity": "<intensity_score>"
+        }}
+
+    Message:
+    \"\"\"{user_msg}\"\"\"
+    """
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[
-            {"role": "user", "content": f"Rate the emotional intensity of the following text with 1, 2 or 3, only answer with integer score: {user_msg}"}
+            {"role": "user", "content": prompt}
         ],
         temperature=0.2  # for consistent classification
     )
     ai_response = response.choices[0].message.content.strip().lower()
     return ai_response
+
+def append_to_chat_history(message):
+    # Append a message to the conversation history.
+    global conversation_history 
+    conversation_history.append({"role": "user", "content": message})
