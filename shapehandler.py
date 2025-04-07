@@ -153,7 +153,7 @@ class Shapehandler:
             if self.parameters["inactive"] :
                 dy = (0 - self.previous_vector[j])*0.1
             else:
-                dy = (self.parameters["feature_vector"][j] - self.previous_vector[j])*0.1
+                dy = (self.parameters["feature_vector"][j] - self.previous_vector[j])*0.07
             
             y = self.previous_vector[j] + dy
             y_displacement.append(y)
@@ -182,7 +182,7 @@ class Shapehandler:
 
         #appply rotation of layer
         if self.parameters["rotation"] > self.current_rotation:
-            self.current_rotation += 1
+            self.current_rotation += 0.5
             #apply rotation to pattern line
         for i in range(len(points)):
             points[i] = pc.rotate(points[i],pc.point(self.center[0],self.center[1],0) , self.current_rotation)

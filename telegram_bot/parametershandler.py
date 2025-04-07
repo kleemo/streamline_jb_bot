@@ -13,7 +13,7 @@ class ParametersHandler():
         self.accumulated_user_text = ""
         self.num_input = 0
         self.shape = "none"
-        self.diameter = (0,0)
+        self.diameter = (80,80)
         self.growth_direction = (0, 0),
         self.rotation = 0
         self.bugs = 0
@@ -30,20 +30,25 @@ class ParametersHandler():
             word_density = len(words) / len(input) if len(input) > 0 else 0
             # Map the length of the input to a range between 15 and 60
             input_length = len(input)
-            input_min = 1  # Minimum possible length of the input
-            input_max = 300  # Maximum possible length of the input (adjust as needed)
-            min_range = 50
-            max_range = 100
-            mapped_length = min_range + ((input_length - input_min) / (input_max - input_min)) * (max_range - min_range)
-            mapped_length = max(min(mapped_length, max_range), min_range)
-            self.diameter = (mapped_length, word_density * 230)
+            min_range = self.diameter[0] - 10
+            max_range = self.diameter[0] + 10
+            mapped_length = self.map_parameter_to_range(input_length, min_range, max_range, 1, 300)
+            min_range = self.diameter[1] - 10
+            max_range = self.diameter[1] + 10
+            mapped_density = self.map_parameter_to_range(word_density, min_range, max_range, 0, 1)
+            self.diameter = (mapped_length, mapped_density)
         if input_type == "image":
             img = imread(input, as_gray=True)
             # Calculate the average brightness (pixel intensity ranges from 0 to 1)
             avg_brightness = np.mean(img)
             median_brightness = np.median(img)
-            # Map the average brightness to a value between 10 and 100
-            self.diameter = (40 + 70 * avg_brightness, 40 + 70 * median_brightness)
+            min_range = self.diameter[0] - 10
+            max_range = self.diameter[0] + 10
+            mapped_avg_brightness = self.map_parameter_to_range(avg_brightness, min_range, max_range, 0, 1)
+            min_range = self.diameter[1] - 10
+            max_range = self.diameter[1] + 10
+            mapped_median_brightness = self.map_parameter_to_range(median_brightness, min_range, max_range, 0, 1)
+            self.diameter = (mapped_avg_brightness, mapped_median_brightness)
         if input_type == "voice":
             input_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), input)
             if not os.path.exists(input_path):
@@ -115,7 +120,7 @@ class ParametersHandler():
         self.feature_vector = openai_text_embedding(self.accumulated_chat)
         self.feature_vector = [x *self.pattern_height for x in self.feature_vector]  # Scale the vector to a range
         emotiaonal_score = openai_emotional_score(self.accumulated_user_text)
-        sentiment_score = 1
+        sentiment_score = 1 # default if AI fails
         intensity_score = 0.3
 
         try:
@@ -126,6 +131,7 @@ class ParametersHandler():
             print(f"Error parsing AI response: {e}")
         self.pattern_spacing = 1 + 2*sentiment_score # adjust emotional score (0-2) to pattern spacing (1,3,5)
         self.pattern_height = 10 + intensity_score*60
+        print(f"Emotional scores: Sentiment: {sentiment_score}, Intensity: {intensity_score}")
 
         
         
@@ -134,8 +140,8 @@ class ParametersHandler():
         if layer <= 0:
             return
         increase = self.num_input/layer
-        if layer > 5:
-            increase *= 20
+        if layer > 2:
+            increase *= 15
         self.rotation += increase
   
     def set_new_epoch(self):
@@ -157,4 +163,25 @@ class ParametersHandler():
             self.inactive = False
         else:
             self.inactive = True
+
+    @staticmethod
+    def map_parameter_to_range(value, min_value, max_value, input_min, input_max):
+        """
+        Maps a value from one range to another.
+        """
+        # Ensure the input range is valid
+        if input_min >= input_max:
+            raise ValueError("Input min must be less than input max")
+        
+        # Ensure the output range is valid
+        if min_value >= max_value:
+            raise ValueError("Output min must be less than output max")
+        
+        # Normalize the value to a 0-1 range based on the input range
+        normalized_value = (value - input_min) / (input_max - input_min)
+        
+        # Map the normalized value to the output range
+        mapped_value = min_value + normalized_value * (max_value - min_value)
+        
+        return mapped_value
     

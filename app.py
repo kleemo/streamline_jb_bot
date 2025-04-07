@@ -256,7 +256,7 @@ def start_print(data, wobble):
 
 
         # create the shape points
-        if layer % 3 == 0:
+        if layer % 4 == 0:
             #update parameters every 3 layers
             parameter_handler.handle_inactivity(chat_activity)
             chat_activity = 0
@@ -271,14 +271,14 @@ def start_print(data, wobble):
 
             
             while (print_handler.is_printing() or print_handler.is_paused()):
-                time.sleep(1)
+                time.sleep(2)
                 print("print status :",print_handler.status())
 
             # update layer height
             layer = layer + 1
             height = height + slicer_handler.params['layer_hight']
             emit('layer', {'layer': layer}) #"We are on Layer" – Output
-            time.sleep(2)  # Wait 3 seconds
+            time.sleep(1)  # Wait 3 seconds
             
             
 
