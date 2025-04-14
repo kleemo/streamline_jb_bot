@@ -170,3 +170,31 @@ def append_to_chat_history(message):
     # Append a message to the conversation history.
     global conversation_history 
     conversation_history.append({"role": "user", "content": message})
+
+def openai_scores(user_msg):
+    prompt = f"""
+    Given the following user message assign the following three scores, as a float ranging from 0 to 1. : 
+    - Cognitive complexity: Measures analytical vs. intuitive thinking. Factors include; sentence structure, logical connectors, abstract vs. concrete language.
+    - Social/Power dynamics: Assesses assertiveness, politeness, dominance, deference in communication. Factors include; modal verbs ("could, might"), hedging ("I think, maybe"), direct commands.
+    - Intent/Motivational force: Detects persuasion, exploration, activism, storytelling in speech. Factors: call-to-action phrases ("Join us!"), speculative language ("What if?"), certainty markers.
+
+    Respond in this format:
+        
+        {{
+            "cognitive complexity": "<complexity_score>",
+            "social dynamics": "<dynamics_score>",
+            "motivational force": "<motivation_score>"
+        }}
+
+    Message:
+    \"\"\"{user_msg}\"\"\"
+    """
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.2  # for consistent classification
+    )
+    ai_response = response.choices[0].message.content.strip().lower()
+    return ai_response

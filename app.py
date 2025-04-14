@@ -30,7 +30,7 @@ parameter_handler = telegram_bot.parametershandler.ParametersHandler("straight")
 
 layer = 0
 height = 0
-height_max = 80
+height_max = 90
 printing = False
 toggle_state = False
 
@@ -278,13 +278,16 @@ def start_print(data, wobble):
             layer = layer + 1
             height = height + slicer_handler.params['layer_hight']
             emit('layer', {'layer': layer}) #"We are on Layer" – Output
-            time.sleep(1)  # Wait 3 seconds
+            time.sleep(3)  # Wait 3 seconds
             
             
 
             
         print("height = " + str(height))
         print("layer = " + str(layer))
+        while shape_handler.current_diameter[0] < 5 or shape_handler.current_diameter[1] < 5:
+            print("diameter too narrow")
+            time.sleep(5)
     #print_handler.send(slicer_handler.end())
 
 # entry point when running the app. Must be called at the end of the script

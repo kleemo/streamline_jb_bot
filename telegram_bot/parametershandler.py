@@ -4,7 +4,7 @@ import math
 from skimage.io import imread
 import librosa
 import os
-from telegram_bot.handlers import openai_text_classification, openai_text_embedding, openai_emotional_score
+from telegram_bot.handlers import openai_text_classification, openai_text_embedding, openai_scores
 
 class ParametersHandler():
     def __init__(self, pattern):
@@ -13,13 +13,13 @@ class ParametersHandler():
         self.accumulated_user_text = ""
         self.num_input = 0
         self.shape = "none"
-        self.diameter = (80,80)
+        self.diameter = (70,70)
         self.growth_direction = (0, 0),
         self.rotation = 0
         self.bugs = 0
-        self.pattern_height = 40
-        self.pattern_width = 4
-        self.pattern_spacing = 5
+        self.pattern_height = 8
+        self.pattern_width = 2
+        self.pattern_spacing = 2
         self.inactive = False
         self.feature_vector = []
 
@@ -30,11 +30,11 @@ class ParametersHandler():
             word_density = len(words) / len(input) if len(input) > 0 else 0
             # Map the length of the input to a range between 15 and 60
             input_length = len(input)
-            min_range = self.diameter[0] - 10
-            max_range = self.diameter[0] + 10
-            mapped_length = self.map_parameter_to_range(input_length, min_range, max_range, 1, 300)
+            min_range = self.diameter[0] - 20
+            max_range = self.diameter[0] 
+            mapped_length = self.map_parameter_to_range(input_length, min_range, max_range, 1, 100)
             min_range = self.diameter[1] - 10
-            max_range = self.diameter[1] + 10
+            max_range = self.diameter[1] 
             mapped_density = self.map_parameter_to_range(word_density, min_range, max_range, 0, 1)
             self.diameter = (mapped_length, mapped_density)
         if input_type == "image":
@@ -42,11 +42,11 @@ class ParametersHandler():
             # Calculate the average brightness (pixel intensity ranges from 0 to 1)
             avg_brightness = np.mean(img)
             median_brightness = np.median(img)
-            min_range = self.diameter[0] - 10
-            max_range = self.diameter[0] + 10
+            min_range = self.diameter[0] - 20
+            max_range = self.diameter[0] 
             mapped_avg_brightness = self.map_parameter_to_range(avg_brightness, min_range, max_range, 0, 1)
-            min_range = self.diameter[1] - 10
-            max_range = self.diameter[1] + 10
+            min_range = self.diameter[1] - 20
+            max_range = self.diameter[1] 
             mapped_median_brightness = self.map_parameter_to_range(median_brightness, min_range, max_range, 0, 1)
             self.diameter = (mapped_avg_brightness, mapped_median_brightness)
         if input_type == "voice":
@@ -119,19 +119,22 @@ class ParametersHandler():
         # Convert the text to a vector using OpenAI's text embedding model
         self.feature_vector = openai_text_embedding(self.accumulated_chat)
         self.feature_vector = [x *self.pattern_height for x in self.feature_vector]  # Scale the vector to a range
-        emotiaonal_score = openai_emotional_score(self.accumulated_user_text)
-        sentiment_score = 1 # default if AI fails
-        intensity_score = 0.3
+        scores = openai_scores(self.accumulated_user_text)
+        motivation_score = 0.5 # default if AI fails
+        dynamics_score = 0.5
+        complexity_score = 0.5
 
         try:
-            scores = eval(emotiaonal_score)  # Convert string representation of dict to actual dict
-            sentiment_score = int(scores.get("sentiment", 1))
-            intensity_score = float(scores.get("intensity", 0.3))
+            scores = eval(scores)  # Convert string representation of dict to actual dict
+            motivation_score = float(scores.get("motivational force", 0.5))
+            dynamics_score = float(scores.get("social dynamics", 0.5))
+            complexity_score = float(scores.get("cognitive complexity", 0.5))
         except Exception as e:
             print(f"Error parsing AI response: {e}")
-        self.pattern_spacing = 1 + 2*sentiment_score # adjust emotional score (0-2) to pattern spacing (1,3,5)
-        self.pattern_height = 10 + intensity_score*60
-        print(f"Emotional scores: Sentiment: {sentiment_score}, Intensity: {intensity_score}")
+        self.pattern_spacing = 6 - int(self.map_parameter_to_range(motivation_score, 0, 4, 0, 1))
+        self.pattern_width = self.map_parameter_to_range(dynamics_score, -2, 4, 0, 1)
+        #self.pattern_height = 4
+        print(f"Scores: Motivation: {motivation_score}, Dynamics: {dynamics_score}, Complexity: {complexity_score}")
 
         
         
