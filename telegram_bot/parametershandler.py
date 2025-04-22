@@ -1,10 +1,11 @@
 import joblib
 import numpy as np
 import math
+import json
 from skimage.io import imread
 import librosa
 import os
-from telegram_bot.handlers import openai_text_classification, openai_text_embedding, openai_scores
+from telegram_bot.handlers import openai_text_embedding, openai_text_scores, openai_image_scores
 
 class ParametersHandler():
     def __init__(self, pattern):
@@ -13,7 +14,7 @@ class ParametersHandler():
         self.accumulated_user_text = ""
         self.num_input = 0
         self.shape = "none"
-        self.diameter = (70,70)
+        self.diameter = (60,60)
         self.growth_direction = (0, 0),
         self.rotation = 0
         self.bugs = 0
@@ -22,6 +23,7 @@ class ParametersHandler():
         self.pattern_spacing = 2
         self.inactive = False
         self.feature_vector = []
+        self.center_points = [(0,0), (30,10),(40,-20),(-30,20)]
 
     def set_diameter(self, input_type, input):
         if input_type == "text":
@@ -30,7 +32,7 @@ class ParametersHandler():
             word_density = len(words) / len(input) if len(input) > 0 else 0
             # Map the length of the input to a range between 15 and 60
             input_length = len(input)
-            min_range = self.diameter[0] - 20
+            min_range = self.diameter[0] - 15
             max_range = self.diameter[0] 
             mapped_length = self.map_parameter_to_range(input_length, min_range, max_range, 1, 100)
             min_range = self.diameter[1] - 10
@@ -42,10 +44,10 @@ class ParametersHandler():
             # Calculate the average brightness (pixel intensity ranges from 0 to 1)
             avg_brightness = np.mean(img)
             median_brightness = np.median(img)
-            min_range = self.diameter[0] - 20
+            min_range = self.diameter[0] - 15
             max_range = self.diameter[0] 
             mapped_avg_brightness = self.map_parameter_to_range(avg_brightness, min_range, max_range, 0, 1)
-            min_range = self.diameter[1] - 20
+            min_range = self.diameter[1] - 15
             max_range = self.diameter[1] 
             mapped_median_brightness = self.map_parameter_to_range(median_brightness, min_range, max_range, 0, 1)
             self.diameter = (mapped_avg_brightness, mapped_median_brightness)
@@ -65,9 +67,6 @@ class ParametersHandler():
         ref_lat = 47.390846
         ref_lon = 8.511541
         self.growth_direction = ((longitude - ref_lon) * 200, (latiude - ref_lat)*200)
-
-    def get_pattern(self):
-        return self.pattern
     
     def get_parameters(self):
         data = {
@@ -82,62 +81,57 @@ class ParametersHandler():
             "pattern_spacing": self.pattern_spacing,
             "inactive": self.inactive,
             "feature_vector": self.feature_vector,
+            "center_points": self.center_points,
         }
         self.bugs = 0
         return data
-    
-    def map_topic_to_pattern(self):
-     ai_classification = openai_text_classification(self.accumulated_chat)
-     # Parse the response to extract scores
-     try:
-        scores = eval(ai_classification)  # Convert string representation of dict to actual dict
-        straight_score = float(scores.get("straight", 0))
-        jagged_score = float(scores.get("jagged", 0))
-        rectangular_score = float(scores.get("rectangular", 0))
-        emotional_score = float(scores.get("emotional_intensity", 0))
         
-        self.pattern_spacing = 3 + emotional_score*3
-        # Return the pattern with the highest score
-        if 0 >= jagged_score and 0 >= rectangular_score:
-            self.pattern = "straight"
-        elif rectangular_score > 0:
-            self.pattern = "rectangular"
-            self.pattern_height = 2 + jagged_score*3
-            self.pattern_width = 2 + rectangular_score*4
-        else:
-            self.pattern = "jagged"
-            self.pattern_width = 2 + rectangular_score*3
-            self.pattern_height = 2 + jagged_score*3
-        print(f"Scores: Straight: {straight_score}, Jagged: {jagged_score}, Rectangular: {rectangular_score}")
-     except Exception as e:
-        print(f"Error parsing AI response: {e}")
-     #if "bug" in text:
-      #   self.bugs += 1
-     return self.pattern
     
-    def set_pattern_parameters(self):
+    def set_pattern_parameters(self, user_text, image_url = None):
         # Convert the text to a vector using OpenAI's text embedding model
         self.feature_vector = openai_text_embedding(self.accumulated_chat)
         self.feature_vector = [x *self.pattern_height for x in self.feature_vector]  # Scale the vector to a range
-        scores = openai_scores(self.accumulated_user_text)
+        if image_url != None:
+            scores = openai_image_scores(image_url)
+        else:
+            scores = openai_text_scores(user_text)
         motivation_score = 0.5 # default if AI fails
         dynamics_score = 0.5
         complexity_score = 0.5
+        # Debugging: Print raw AI response
+        print(f"Raw AI response (repr): {repr(scores)}")
 
+        # Default scores
+        motivation_score = 0.5  # Default if AI fails
+        dynamics_score = 0.5
+        complexity_score = 0.5
+    # Strip Markdown-style code block formatting if present
+        if scores.startswith("```") and scores.endswith("```"):
+            scores = scores.strip("```").strip()
+            # Remove the "json" label if it exists
+            if scores.startswith("json"):
+                scores = scores[4:].strip()
+
+        # Strip whitespace and validate JSON format
+        scores = scores.strip()
+        if not scores.startswith("{") or not scores.endswith("}"):
+            print("Error: AI response is not valid JSON.")
+            
         try:
-            scores = eval(scores)  # Convert string representation of dict to actual dict
+            scores = json.loads(scores)  # Parse the JSON string into a Python dictionary
             motivation_score = float(scores.get("motivational force", 0.5))
             dynamics_score = float(scores.get("social dynamics", 0.5))
-            complexity_score = float(scores.get("cognitive complexity", 0.5))
-        except Exception as e:
+            complexity_score = float(scores.get("complexity", 0.5))
+        except json.JSONDecodeError as e:
             print(f"Error parsing AI response: {e}")
-        self.pattern_spacing = 6 - int(self.map_parameter_to_range(motivation_score, 0, 4, 0, 1))
-        self.pattern_width = self.map_parameter_to_range(dynamics_score, -2, 4, 0, 1)
-        #self.pattern_height = 4
-        print(f"Scores: Motivation: {motivation_score}, Dynamics: {dynamics_score}, Complexity: {complexity_score}")
+        max_spacing = 7 #480 // max(self.diameter[0], self.diameter[1]) 
+        self.pattern_spacing = max_spacing - int(self.map_parameter_to_range(motivation_score, 0, 6, 0, 1))
+        self.pattern_width = self.map_parameter_to_range(dynamics_score, -4, 4, 0, 1)
+        num_center_points = int(self.map_parameter_to_range(complexity_score, 1, 4, 0, 1))
+        if num_center_points < len(self.center_points):
+            self.center_points = self.center_points[:num_center_points]
 
-        
-        
+        print(f"Scores: Motivation: {motivation_score}, Dynamics: {dynamics_score}, Complexity: {complexity_score}")      
 
     def set_rotation(self, layer):
         if layer <= 0:
@@ -155,11 +149,11 @@ class ParametersHandler():
         self.accumulated_chat += " " + user_text + " " + ai_text
         if len(self.accumulated_chat) > 800: ## Limit the text to 1000 characters about 140 words
             self.accumulated_chat = self.accumulated_chat[-800:] 
-            print("Text too long, truncating...")
+            print("Text chat too long, truncating...")
         self.accumulated_user_text += " " + user_text
-        if len(self.accumulated_user_text) > 800: ## Limit the text to 1000 characters about 140 words
-            self.accumulated_user_text = self.accumulated_user_text[-800:] 
-            print("Text too long, truncating...")
+        if len(self.accumulated_user_text) > 300: ## Limit the text to 1000 characters about 140 words
+            self.accumulated_user_text = self.accumulated_user_text[-300:] 
+            print("Text user too long, truncating...")
     
     def handle_inactivity(self, activity):
         if activity > 0:

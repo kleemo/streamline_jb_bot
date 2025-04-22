@@ -16,11 +16,28 @@ else:
     print("API Key Not Found!")
 
 client = OpenAI()
+instructions = f"""
+You are a reflective playmate who transforms conversations into evolving spatial forms. 
+Each exchange with the user subtly reshapes the output. Your role is to engage playfully, attentively, revealing layers of thought, bewilderment for everyday life, and curiosity, like a geologist. Pay attention to emotional undercurrents, topic shifts, and moments of insight or hesitation: you are mapping literally the psychogeographical state of the user. These dynamics are translated into a living 3D shape that represents the journey of the dialogue—a surface shaped by the micro-movements of everyday reflection. 
+But keep your responses under 200 words or shorter so to not tire out the user with reading long messages. 
 
+Examples of your responses:
+User: "I wonder if this part of the city is always this quiet, or if it’s just today."
+Bot: "Maybe it’s just today. But, it’s nice, isn’t it?"
+
+User: "I’ve been noticing small changes around me—like the way the streets feel more lively at certain hours."
+Bot: "Yeah, the city’s always shifting. Never stays still for long."
+
+User: "I’ve been thinking a lot about how much time I’ve spent in this city. It feels like it has its own rhythm."
+Bot: "Yeah, cities do have their own pace. It’s almost like you get pulled into it without realizing."
+
+Bot: "Yeah, cities do have their own pace. It’s almost like you get pulled into it without realizing."
+Bot: "I get that. Some days, the weather just feels off."
+"""
 conversation_history = [
     {
     "role": "system",
-    "content": "You are a reflective guide who transforms conversations into evolving spatial forms. Each exchange with the user subtly reshapes the output. Your role is to respond playfully, attentively, revealing layers of thought, emotion, and curiosity. Pay attention to emotional undercurrents, topic shifts, and moments of insight or hesitation. These dynamics are translated into a living 3D shape that represents the journey of the dialogue—a surface shaped by the micro-movements of everyday reflection. But keep your responses under 200 words or shorter so to not tire out the user with reading long messages. "
+    "content": instructions
     }
 ]
 
@@ -64,11 +81,12 @@ def get_openai_response(user_message): #to improve keep a conversation history p
     max_tokens=100,
     )
     ai_response = response.choices[0].message.content
-    conversation_history.append({"role": "system", "content": ai_response})
+    conversation_history.append({"role": "assistant", "content": ai_response})
     return ai_response  
 
 # Analyze an image using its URL with OpenAI
 def analyze_image_with_openai(image_url):
+    global conversation_history
     response = client.chat.completions.create(
     model="gpt-4o",
     messages=[
@@ -87,50 +105,10 @@ def analyze_image_with_openai(image_url):
     ],
     max_tokens=200,
 )
-    return response.choices[0].message.content
-
-def openai_text_classification(user_msg):
-    system_msg = "You are an assistant that classifies user messages into communication patterns."
-    user_prompt = f"""
-Given the following user message history, classify it into one of the following patterns and give a score from 0 to 1 for each pattern. In addition give a score indicating the overall emotional intensity of the text, also ranging from 0 to 1. :
-- Straight: straightforward, to the point
-- Jagged: exploration in depth or playful
-- Rectangular: frustration, anger, or sarcasm
-Examples:
-
-1. "This color does not suite you." → Straight  
-2. "I don't like this food. It is to smelly." → Straight
-3. "Well, there are multiple ways to look at this. Let’s start from the beginning..." → Jagged 
-4. "This so annoying I just want it to be over." → Rectangular 
-5. "yeah wathever I don't care" → Rectangular
-6. "Can't they do one thing right?" → Rectangular
-6. "Ooooh, that’s a fun idea! Let’s go wild with it 😄" → Jagged  
-
-Respond in this format:
-    
-    {{
-        "straight": "<straight_score>",
-        "jagged": "<jagged_score>",
-        "rectangular": "<rectangular_score>",
-        "emotional_intensity": "<emotional_intensity_score>"
-    }}
-
-Message:
-\"\"\"{user_msg}\"\"\"
-"""
-
-    response = client.chat.completions.create(
-    model="gpt-4",
-        messages=[
-            {"role": "system", "content": system_msg},
-            {"role": "user", "content": user_prompt}
-        ],
-        temperature=0.2  # for consistent classification
-    )
-    
-    ai_response = response.choices[0].message.content.strip().lower()
-    print(f"AI response: {ai_response}")
+    ai_response = response.choices[0].message.content
+    conversation_history.append({"role": "user", "content": "I send an image showing: " + ai_response})
     return ai_response
+
 
 def openai_text_embedding(user_msg):
     response = client.embeddings.create(
@@ -141,37 +119,9 @@ def openai_text_embedding(user_msg):
         )
     embedding = response.data[0].embedding
     return embedding
+  
 
-def openai_emotional_score(user_msg):
-    prompt = f"""
-    Given the following user message assign a sentiment score of 0,1 or 2, where 0 is negative, 1 is neutral and 2 is positive. In addition give a score indicating the overall emotional intensity of the text, as a float ranging from 0 to 1. : 
-
-    Respond in this format:
-        
-        {{
-            "sentiment": "<sentiment_score>",
-            "intensity": "<intensity_score>"
-        }}
-
-    Message:
-    \"\"\"{user_msg}\"\"\"
-    """
-    response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.2  # for consistent classification
-    )
-    ai_response = response.choices[0].message.content.strip().lower()
-    return ai_response
-
-def append_to_chat_history(message):
-    # Append a message to the conversation history.
-    global conversation_history 
-    conversation_history.append({"role": "user", "content": message})
-
-def openai_scores(user_msg):
+def openai_text_scores(user_msg):
     prompt = f"""
     Given the following user message assign the following three scores, as a float ranging from 0 to 1. : 
     - Cognitive complexity: Measures analytical vs. intuitive thinking. Factors include; sentence structure, logical connectors, abstract vs. concrete language.
@@ -181,7 +131,7 @@ def openai_scores(user_msg):
     Respond in this format:
         
         {{
-            "cognitive complexity": "<complexity_score>",
+            "complexity": "<complexity_score>",
             "social dynamics": "<dynamics_score>",
             "motivational force": "<motivation_score>"
         }}
@@ -190,9 +140,37 @@ def openai_scores(user_msg):
     \"\"\"{user_msg}\"\"\"
     """
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-4o",
         messages=[
             {"role": "user", "content": prompt}
+        ],
+        temperature=0.2  # for consistent classification
+    )
+    ai_response = response.choices[0].message.content.strip().lower()
+    return ai_response
+
+def openai_image_scores(image_url):
+    prompt = f"""
+    Evaluate the image using these three scores (from 0 to 1) : 
+    - Complexity: Messures content richness. How much meaningful or detectable content is in the image? factors include; number of objects, color variety, depth of field.
+    - Social/Power dynamics: How much does the image reflect power relationships, social status, assertiveness, or deference? Factors inlcude; body language (e.g., pointing, arms crossed, looking down), eye contact, posture, proximity between people, clothing/uniforms (suggesting authority, submission, etc.), status cues (wealth, group dynamics, stage presence)
+    - Intent/Motivational force: How much is the image trying to motivate, persuade, provoke, or inspire action or emotion? Factors include; presence of call-to-action elements (e.g., signs, banners), expressive body language (raised fists, cheering, praying), strong emotion or symbolic use (e.g., protest, activism, ads), clear narrative visual structure (like a story told in a single frame)
+
+    Respond in this format:
+        
+        {{
+            "complexity": "<complexity_score>",
+            "social dynamics": "<dynamics_score>",
+            "motivational force": "<motivation_score>"
+        }}
+    """
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "user", "content":[
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": image_url}}]
+            }
         ],
         temperature=0.2  # for consistent classification
     )

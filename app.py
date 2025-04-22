@@ -13,7 +13,7 @@ import shapehandler
 import slicerhandler
 import point_calc as pc
 
-from telegram_bot.handlers import send_message_to_telegram, fetch_file, get_openai_response, download_file, analyze_image_with_openai, append_to_chat_history
+from telegram_bot.handlers import send_message_to_telegram, fetch_file, get_openai_response, download_file, analyze_image_with_openai
 import telegram_bot.parametershandler
 welcome_mesage = "Hello and welcome! This isn’t just a chatbot. It’s a guide through an invisible landscape—one that shifts with every thought you share. As we talk, a living shape grows from our conversation.Type anything to begin the journey."
 port = 'COM3' # use this port for Windows
@@ -65,7 +65,7 @@ def telegram_webhook():
 
             ai_response = get_openai_response(text)
             parameter_handler.add_text(text, ai_response)
-            parameter_handler.set_pattern_parameters()
+            parameter_handler.set_pattern_parameters(text)
             if parameter_handler.shape == "none" or parameter_handler.shape == "circle":
                 parameter_handler.shape = "circle"
                 parameter_handler.set_diameter("text", text)
@@ -78,8 +78,8 @@ def telegram_webhook():
             image_url = fetch_file(file_id)
             ai_response = analyze_image_with_openai(image_url)
             parameter_handler.add_text("",ai_response)
-            parameter_handler.set_pattern_parameters()
-            append_to_chat_history(ai_response)
+            parameter_handler.set_pattern_parameters("/image",image_url= image_url)
+            
             if parameter_handler.shape == "none" or parameter_handler.shape == "rectangle":
                 parameter_handler.shape = "rectangle"
                 parameter_handler.set_diameter("image", image_url)
@@ -256,7 +256,7 @@ def start_print(data, wobble):
 
 
         # create the shape points
-        if layer % 4 == 0:
+        if layer % 3 == 0:
             #update parameters every 3 layers
             parameter_handler.handle_inactivity(chat_activity)
             chat_activity = 0
