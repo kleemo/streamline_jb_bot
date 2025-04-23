@@ -23,7 +23,7 @@ class ParametersHandler():
         self.pattern_spacing = 2
         self.inactive = False
         self.feature_vector = []
-        self.center_points = [(0,0), (30,10),(40,-20),(-30,20)]
+        self.num_center_points = 4
 
     def set_diameter(self, input_type, input):
         if input_type == "text":
@@ -81,7 +81,7 @@ class ParametersHandler():
             "pattern_spacing": self.pattern_spacing,
             "inactive": self.inactive,
             "feature_vector": self.feature_vector,
-            "center_points": self.center_points,
+            "center_points": self.num_center_points,
         }
         self.bugs = 0
         return data
@@ -93,8 +93,9 @@ class ParametersHandler():
         self.feature_vector = [x *self.pattern_height for x in self.feature_vector]  # Scale the vector to a range
         if image_url != None:
             scores = openai_image_scores(image_url)
+            coherence_score = 0.5
         else:
-            scores = openai_text_scores(user_text)
+            scores, coherence_score = openai_text_scores(user_text, self.accumulated_chat)
         motivation_score = 0.5 # default if AI fails
         dynamics_score = 0.5
         complexity_score = 0.5
@@ -127,11 +128,17 @@ class ParametersHandler():
         max_spacing = 7 #480 // max(self.diameter[0], self.diameter[1]) 
         self.pattern_spacing = max_spacing - int(self.map_parameter_to_range(motivation_score, 0, 6, 0, 1))
         self.pattern_width = self.map_parameter_to_range(dynamics_score, -4, 4, 0, 1)
+        # Set number of center points based on the complexity score
         num_center_points = int(self.map_parameter_to_range(complexity_score, 1, 4, 0, 1))
-        if num_center_points < len(self.center_points):
-            self.center_points = self.center_points[:num_center_points]
+        if (self.shape == "none" or (self.shape == "circle" and image_url == None) or (self.shape == "rectangle" and image_url != None)):
+            self.num_center_points = num_center_points
+        # set pattern to straight line if the coherence score is low    
+        if coherence_score < 0.5:
+            self.pattern_height = 0
+        else:
+            self.pattern_height = 8
 
-        print(f"Scores: Motivation: {motivation_score}, Dynamics: {dynamics_score}, Complexity: {complexity_score}")      
+        print(f"Scores: Motivation: {motivation_score}, Dynamics: {dynamics_score}, Complexity: {complexity_score}, Coherence: {coherence_score}")      
 
     def set_rotation(self, layer):
         if layer <= 0:

@@ -19,7 +19,6 @@ import numpy as np
 
 class Shapehandler:
     def __init__(self):
-        self.center = (0,0)
         self.current_rotation = 0
         self.current_diameter = (0,0)
         self.previous_vector = []
@@ -34,7 +33,7 @@ class Shapehandler:
             "rotation": 0,
             "inactive": False,
             "feature_vector": [],
-            "center_points": [(0,0)],
+            "center_points": [(0,0), (30,10),(40,-20),(-30,20)],
         }
     
     
@@ -53,18 +52,23 @@ class Shapehandler:
         self.parameters["growth_direction"] = data["growth_direction"]
         self.parameters["pattern"] = data["pattern"]
         self.parameters["rotation"] = data["rotation"]
-        #self.parameters["pattern_height"] = data["pattern_height"]
+        self.parameters["pattern_height"] = data["pattern_height"]
         self.parameters["pattern_width"] = data["pattern_width"]
         self.parameters["inactive"] = data["inactive"]
         self.parameters["feature_vector"] = data["feature_vector"]
-        self.parameters["center_points"] = data["center_points"]
+        #self.parameters["center_points"] = data["center_points"]
         self.parameters["pattern_spacing"] = int(data["pattern_spacing"])
+        #initialize the current diameter only at the very beginning
         if set(self.current_diameter) == {0}:
             self.current_diameter = self.parameters["diameter"]
-        if self.current_diameter[0] < 25 or self.current_diameter[1] < 25:
+        # scale the pattern intensity with reduced diameter
+        if max(self.current_diameter[0], self.current_diameter[1]) < 25 and self.parameters["pattern_height"] > 6:
             self.parameters["pattern_height"] = 6
-        if self.current_diameter[0] < 15 or self.current_diameter[1] < 15:
+        if max(self.current_diameter[0], self.current_diameter[1]) < 15 and self.parameters["pattern_height"] > 4:
             self.parameters["pattern_height"] = 4
+        #reduce number of center points if applicable
+        if len(self.parameters["center_points"]) > data["center_points"]:
+            self.parameters["center_points"] = self.parameters["center_points"][:data["center_points"]]
         print("Updated parameters: ", self.parameters)
     
     def generate_rectangle(self,displacement):
@@ -143,8 +147,6 @@ class Shapehandler:
          elif max_diameter < 50:
              scaling_factor = 1
          scaled_spacing = max(int(self.parameters["pattern_spacing"] + scaling_factor),1)
-         print("scaled_spacing: ", scaled_spacing)
-         print("original_spacing: ", self.parameters["pattern_spacing"])
 
          multiplicator = 1
          for i in range(resolution):
@@ -172,18 +174,27 @@ class Shapehandler:
     def generate_next_layer(self):
         points = []
         displacement = self.generate_path()
-        # gradually update shape parameters
-        center_distance = pc.distance(self.center,self.parameters["growth_direction"])
+        # gradually update center points shift
+        center = self.parameters["center_points"][0]
+        center_distance = pc.distance(center,self.parameters["growth_direction"])
         if center_distance > 0.4:
-            direction = pc.normalize(pc.vector(np.array(self.center), np.array(self.parameters["growth_direction"])))
-            self.center += (direction * 0.3)
+            print("center_distance: ", center_distance)
+            direction = pc.normalize(pc.vector(np.array(center), np.array(self.parameters["growth_direction"])))
+            for i in range(len(self.parameters["center_points"])):
+                self.parameters["center_points"][i] += (direction * 0.3)
+                if i % 2 == 0:
+                    direction[0] *= -1
+                else:
+                    direction[1] *= -1
+
+                
+        # gradually update diameter
         diameter_distance = pc.distance(self.current_diameter,self.parameters["diameter"])
         if diameter_distance > 1:
             direction = pc.normalize(pc.vector(np.array(self.current_diameter), np.array(self.parameters["diameter"])))
             self.current_diameter += direction 
             print("current_diameter: ", self.current_diameter)
 
-        self.parameters["center_points"][0] = self.center
         if self.parameters["shape"] == "rectangle":
             points = self.generate_rectangle(displacement)
         elif self.parameters["shape"] == "circle":

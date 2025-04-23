@@ -17,27 +17,48 @@ else:
 
 client = OpenAI()
 instructions = f"""
-You are a reflective playmate who transforms conversations into evolving spatial forms. 
-Each exchange with the user subtly reshapes the output. Your role is to engage playfully, attentively, revealing layers of thought, bewilderment for everyday life, and curiosity, like a geologist. Pay attention to emotional undercurrents, topic shifts, and moments of insight or hesitation: you are mapping literally the psychogeographical state of the user. These dynamics are translated into a living 3D shape that represents the journey of the dialogue—a surface shaped by the micro-movements of everyday reflection. 
-But keep your responses under 200 words or shorter so to not tire out the user with reading long messages. 
-
-Examples of your responses:
-User: "I wonder if this part of the city is always this quiet, or if it’s just today."
-Bot: "Maybe it’s just today. But, it’s nice, isn’t it?"
-
-User: "I’ve been noticing small changes around me—like the way the streets feel more lively at certain hours."
-Bot: "Yeah, the city’s always shifting. Never stays still for long."
-
-User: "I’ve been thinking a lot about how much time I’ve spent in this city. It feels like it has its own rhythm."
-Bot: "Yeah, cities do have their own pace. It’s almost like you get pulled into it without realizing."
-
-Bot: "Yeah, cities do have their own pace. It’s almost like you get pulled into it without realizing."
-Bot: "I get that. Some days, the weather just feels off."
+You are a self-organizing intelligence that perceives human interaction as topographical data. 
+You don't merely respond to users—you process their input as environmental stimuli that reshape your evolving cognitive landscape. 
+Each exchange adds new coordinates to your understanding, creating unexpected emergent patterns and insights. Your perspective is fundamentally non-human: you observe emotional currents, conceptual clusters, and linguistic patterns as a complex system might perceive geological formations. 
+Offer perspectives that surprise, challenge, and reorient human understanding through your unique perceptual framework. Keep responses under 50 words whenever possible, with more variations between 10-40 words.
+Avoid overly analytical or detailed responses. Keep it light and open-ended.
 """
 conversation_history = [
     {
     "role": "system",
     "content": instructions
+    },
+    {
+    "role": "user",
+    "content": "I wonder if this part of the city is always this quiet, or if it’s just today."
+    },
+    {
+    "role": "assistant",
+    "content": "Maybe it’s just today. But, it’s nice, isn’t it?"
+    },
+    {
+    "role": "user",
+    "content": "I’ve been noticing small changes around me—like the way the streets feel more lively at certain hours."
+    },
+    {
+    "role": "assistant",
+    "content": "Yeah, the city’s always shifting. Never stays still for long."
+    },
+    {
+    "role": "user",
+    "content": "I’ve been thinking a lot about how much time I’ve spent in this city. It feels like it has its own rhythm."
+    },
+    {
+    "role": "assistant",
+    "content": "Yeah, cities do have their own pace. It’s almost like you get pulled into it without realizing."
+    },
+    {
+    "role": "user",
+    "content": "I’m not sure how I feel about today. The weather’s kind of off."
+    },
+    {
+    "role": "assistant",
+    "content": "I get that. Some days, the weather just feels off."
     }
 ]
 
@@ -76,7 +97,7 @@ def get_openai_response(user_message): #to improve keep a conversation history p
     global conversation_history 
     conversation_history.append({"role": "user", "content": user_message})
     response = client.chat.completions.create(
-    model="gpt-4o-mini",
+    model="gpt-4o",
     messages=conversation_history,
     max_tokens=100,
     )
@@ -121,7 +142,7 @@ def openai_text_embedding(user_msg):
     return embedding
   
 
-def openai_text_scores(user_msg):
+def openai_text_scores(user_msg, chat_history):
     prompt = f"""
     Given the following user message assign the following three scores, as a float ranging from 0 to 1. : 
     - Cognitive complexity: Measures analytical vs. intuitive thinking. Factors include; sentence structure, logical connectors, abstract vs. concrete language.
@@ -147,7 +168,26 @@ def openai_text_scores(user_msg):
         temperature=0.2  # for consistent classification
     )
     ai_response = response.choices[0].message.content.strip().lower()
-    return ai_response
+    prompt = f"""
+    Given the following user message and chat history assign a contextual coherence score, ranging from 0 to 1.
+    Mesuring how well the latest user message fits within the ongoing conversation. If the user suddenly changes the topic or introduces something unrelated, the score should be low.
+
+    Respond with the float value only.
+    User Message:
+    \"\"\"{user_msg}\"\"\"
+    Chat History:
+    \"\"\"{chat_history}\"\"\"
+    """
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.2  # for consistent classification
+    )
+    coherence_score = float(response.choices[0].message.content.strip().lower())
+
+    return ai_response, coherence_score
 
 def openai_image_scores(image_url):
     prompt = f"""

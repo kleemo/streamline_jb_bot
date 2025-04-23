@@ -64,8 +64,8 @@ def telegram_webhook():
                 return '', 200 
 
             ai_response = get_openai_response(text)
-            parameter_handler.add_text(text, ai_response)
             parameter_handler.set_pattern_parameters(text)
+            parameter_handler.add_text(text, ai_response)
             if parameter_handler.shape == "none" or parameter_handler.shape == "circle":
                 parameter_handler.shape = "circle"
                 parameter_handler.set_diameter("text", text)
@@ -278,7 +278,7 @@ def start_print(data, wobble):
             layer = layer + 1
             height = height + slicer_handler.params['layer_hight']
             emit('layer', {'layer': layer}) #"We are on Layer" – Output
-            time.sleep(3)  # Wait 3 seconds
+            time.sleep(10)  # Wait 10 seconds for simulation
             
             
 
