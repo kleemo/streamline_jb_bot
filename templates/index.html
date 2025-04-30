@@ -64,6 +64,13 @@
 						<vue-range-slider :tooltip="null" :min="+0.5" :max="+2.5" step="+0.25" ref="slider"
 							v-model="slicer_options.layer_hight"></vue-range-slider>
 					</div>
+					<div class="slicer">
+						<h4>Shape</h4>
+						<p>Number of repetitions per layer: [[ shape_options.repetitions ]]</p>
+						<!-- <input v-model="slicer_options.extrusion_rate" placeholder=""> -->
+						<vue-range-slider :tooltip="null" :min="+1" :max="+3" :step="+1" ref="slider"
+							v-model="shape_options.repetitions"></vue-range-slider>
+					</div>
 				</div>
 			</div>
 		</div>

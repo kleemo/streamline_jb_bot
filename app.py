@@ -129,6 +129,10 @@ def setLayer(data):
     global layer
     layer = int(data["layer"])
 
+@socketio.on('shape_options')
+def shape_options(data):
+    print("shape_options socket")
+    shape_handler.parameters['repetitions'] = data["repetitions"]
 
 @socketio.on('printer_connect')
 def printer_connect(port, baud):
@@ -261,24 +265,27 @@ def start_print(data, wobble):
             parameter_handler.handle_inactivity(chat_activity)
             chat_activity = 0
             shape_handler.update_parameters(parameter_handler.get_parameters())
-        points = shape_handler.generate_next_layer()
+        points = shape_handler.generate_next_layer(layer)
 
-        repetitions = 1
-        for i in range(repetitions):
-            # create gcode from points
-            gcode = slicer_handler.create(height, points)
-            print_handler.send(gcode)
-
-            
-            while (print_handler.is_printing() or print_handler.is_paused()):
-                time.sleep(2)
-                print("print status :",print_handler.status())
-
-            # update layer height
-            layer = layer + 1
-            height = height + slicer_handler.params['layer_hight']
-            emit('layer', {'layer': layer}) #"We are on Layer" – Output
-            time.sleep(10)  # Wait 10 seconds for simulation
+        # print outline of the shape first
+        gcode = slicer_handler.create(height, points)
+        print_handler.send(gcode)    
+        while (print_handler.is_printing() or print_handler.is_paused()):
+            time.sleep(2)
+            print("print status :",print_handler.status())
+        # generate and print infill of the shape
+        infill = shape_handler.generate_infill(points)
+        gcode = slicer_handler.create(height, infill, max_distance=100)
+        #print("infill gcode", gcode)
+        print_handler.send(gcode)
+        while (print_handler.is_printing() or print_handler.is_paused()):
+            time.sleep(2)
+            print("print status :",print_handler.status())
+        # update layer height
+        layer = layer + 1
+        height = height + slicer_handler.params['layer_hight']
+        emit('layer', {'layer': layer}) #"We are on Layer" – Output
+        time.sleep(8)  # Wait 10 seconds for simulation
             
             
 

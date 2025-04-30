@@ -4,24 +4,17 @@ Name: Shape Handler
 Description: is responsible to deal with the creation and adaption of the shapes
 """
 
-import time
-import getopt
-import sys
-import getopt
-import random
-
-import math
-
 # import custom classes
 import point_calc as pc
-import matplotlib.pyplot as plt
 import numpy as np
+from shapely.geometry import Polygon, LineString
 
 class Shapehandler:
     def __init__(self):
         self.current_rotation = 0
         self.current_diameter = (0,0)
         self.previous_vector = []
+        self.previous_points = []
         self.parameters = { #new parameters
             "shape": "none",
             "diameter": (0,0),
@@ -34,6 +27,7 @@ class Shapehandler:
             "inactive": False,
             "feature_vector": [],
             "center_points": [(0,0), (30,10),(40,-20),(-30,20)],
+            "repetitions": 1,
         }
     
     
@@ -161,9 +155,9 @@ class Shapehandler:
                 displacement.append(goal)
                 self.previous_vector.append(goal)  
             else:
-                vector = (goal[0] - self.previous_vector[i][0], goal[1] - self.previous_vector[i][1])
+                vector = pc.normalize(pc.vector(np.array(self.previous_vector[i]),np.array(goal)))#(goal[0] - self.previous_vector[i][0], goal[1] - self.previous_vector[i][1])
                 # Multiply the vector by a factor (e.g., 0.1)
-                scaled_vector = (vector[0] * 0.2, vector[1] * 0.2)
+                scaled_vector = (vector[0] * 0.5, vector[1] * 0.5)
                 new_displacement = (self.previous_vector[i][0] + scaled_vector[0], self.previous_vector[i][1] + scaled_vector[1])
                 displacement.append(new_displacement)
                 self.previous_vector[i] = new_displacement
@@ -171,13 +165,17 @@ class Shapehandler:
          #print("displacement: ", displacement)
          return displacement
     
-    def generate_next_layer(self):
+    def generate_next_layer(self,layer):
+        # draw the same shape for given number of layers
+        if layer % self.parameters["repetitions"] != 0:
+            return self.previous_points
+        
         points = []
         displacement = self.generate_path()
         # gradually update center points shift
         center = self.parameters["center_points"][0]
         center_distance = pc.distance(center,self.parameters["growth_direction"])
-        if center_distance > 0.4:
+        if center_distance > 0.05:
             print("center_distance: ", center_distance)
             direction = pc.normalize(pc.vector(np.array(center), np.array(self.parameters["growth_direction"])))
             for i in range(len(self.parameters["center_points"])):
@@ -211,8 +209,89 @@ class Shapehandler:
         for i in range(len(points)):
             points[i] = pc.rotate(points[i],pc.point(center_of_mass_x,center_of_mass_y,0) , self.current_rotation)
             
+        self.previous_points = points
         return points
     
+    def generate_infill(self, points, spacing=10, angle=0):
+        """
+        Generate a simple linear infill for a given outline.
+    
+        Args:
+        points (list): List of points defining the outline.
+        spacing (float): Spacing between infill lines.
+        angle (float): Angle of the infill lines in degrees (default is 0 for horizontal lines).
+    
+        Returns:
+        list: List of line segments representing the infill.
+        """
+        # split the points into seperate polygons
+        polygon = []
+        for i in range(len(points)-1):
+            point = points[i]
+            point_next = points[i+1]
+            distance = pc.distance(point, point_next)
+            p = (point[0], point[1])
+            polygon.append(p)
+            if distance >= 10:  # Example threshold: 10 units
+                break
+        print("polygon len: ", len(polygon))
+        print("points len: ", len(points))
+        #print("polygon: ", polygon)
+
+        # Remove duplicate points
+        polygon = list(dict.fromkeys(polygon))
+        
+        # Ensure the polygon is closed
+        if polygon[0] != polygon[-1]:
+            polygon.append(polygon[0])
+
+        # Create a polygon from the outline points
+        outline_polygon = Polygon(polygon)
+
+        # Validate the outline polygon
+        if not outline_polygon.is_valid:
+            print("Outline polygon is invalid. Attempting to fix...")
+            outline_polygon = outline_polygon.buffer(0)
+            if not outline_polygon.is_valid:
+                print("Failed to fix the outline polygon. Skipping infill generation.")
+                return []
+
+        # Get the bounding box of the outline
+        min_x, min_y, max_x, max_y = outline_polygon.bounds
+
+        # Generate parallel lines within the bounding box
+        infill_lines = []
+        y = min_y
+        while y <= max_y:
+            line = LineString([(min_x, y), (max_x, y)])
+            infill_lines.append(line)
+            y += spacing
+
+        # Clip the lines to the outline
+        clipped_lines = [line.intersection(outline_polygon) for line in infill_lines]
+
+        # Filter out empty or invalid lines
+        clipped_lines = [line for line in clipped_lines if not line.is_empty]
+
+        if len(clipped_lines) > 6:
+            clipped_lines = clipped_lines[2:-2]  # Limit to 6 lines
+        elif len(clipped_lines) > 2:
+            clipped_lines = clipped_lines[1:-1]
+
+        # Convert the clipped lines to a list of points
+        infill_points = []
+        for line in clipped_lines:
+            if line.geom_type == 'LineString':
+                for coord in line.coords:
+                    infill_points.append(coord)
+            elif line.geom_type == 'MultiLineString':
+                for segment in line.geoms:
+                    for coord in segment.coords:
+                        infill_points.append(coord)
+        print("infill_points len: ", len(infill_points))
+        #print("infill_points: ", infill_points)
+        return infill_points
+
     @staticmethod
     def is_inside_ellipse(point, center, radius):
         """

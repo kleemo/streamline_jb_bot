@@ -80,7 +80,7 @@ class ParametersHandler():
             "pattern_width": self.pattern_width,
             "pattern_spacing": self.pattern_spacing,
             "inactive": self.inactive,
-            "feature_vector": self.feature_vector,
+            #"feature_vector": self.feature_vector,
             "center_points": self.num_center_points,
         }
         self.bugs = 0
@@ -89,8 +89,8 @@ class ParametersHandler():
     
     def set_pattern_parameters(self, user_text, image_url = None):
         # Convert the text to a vector using OpenAI's text embedding model
-        self.feature_vector = openai_text_embedding(self.accumulated_chat)
-        self.feature_vector = [x *self.pattern_height for x in self.feature_vector]  # Scale the vector to a range
+        #self.feature_vector = openai_text_embedding(self.accumulated_chat)
+        #self.feature_vector = [x *self.pattern_height for x in self.feature_vector]  # Scale the vector to a range
         if image_url != None:
             scores = openai_image_scores(image_url)
             coherence_score = 0.5

@@ -12,6 +12,10 @@ socket.on('slicer_options', (data) => {
     vm.slicer_options = data
 });
 
+socket.on('shape_options', (data) => {
+    vm.shape_options = data
+});
+
 socket.on('connected', (data) => {
     vm.connected = data.connected
 });

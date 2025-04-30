@@ -37,6 +37,9 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         toolpath_options: {
             linelength: 50
         },
+        shape_options: {
+            repetitions: 1,
+        },
         toolpath_type: "straight",
         plate_center_x: 100,
         plate_center_y: 100
@@ -49,6 +52,12 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         slicer_options: {
             handler: function (newValue, oldValue) {
                 socket.emit('slicer_options', this.slicer_options);
+            },
+            deep: true
+        },
+        shape_options: {
+            handler: function (newValue, oldValue) {
+                socket.emit('shape_options', this.shape_options);
             },
             deep: true
         },

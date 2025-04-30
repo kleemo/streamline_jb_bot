@@ -31,7 +31,7 @@ class Slicerhandler:
             "layer_hight": 0.75
         }
 
-    def create(self, height, points):
+    def create(self, height, points, max_distance = 10):
         # creates g-code from a list of points and the actual height of the print-layer
 
         gcode = []
@@ -49,7 +49,7 @@ class Slicerhandler:
             y = point_next[1]
             distance = pc.distance(point, point_next)
             # Check if the distance is below the threshold
-            if distance < 10:  # Example threshold: 10 units
+            if distance < max_distance:  # Example threshold: 10 units
                 gcode.append("G92 E0")
                 gcode.append(
                     "G1 X" + str(x) +
@@ -81,7 +81,7 @@ class Slicerhandler:
         gcode = []
         gcode.append("G90")
         # the following 2 lines are the likely the brim extrustion commands to get the material flowing
-        gcode.append("G1 X0 Y0 Z" + str(0)) #+ self.params['layer_hight'])
+        gcode.append("G1 X0 Y0 Z" + str(0)) #+ self.params['layer_hight']) alternative plate -12
         gcode.append("G1 X0 E2 F1000")
         gcode.append("G90")
         gcode.append("G92 E0")
