@@ -28,6 +28,7 @@ class Shapehandler:
             "feature_vector": [],
             "center_points": [(0,0), (30,10),(40,-20),(-30,20)],
             "repetitions": 1,
+            "pattern_range": 60,
         }
     
     
@@ -38,7 +39,31 @@ class Shapehandler:
             points[i] =  points[i] * factor
 
         return points
-    
+    def simpple_rectangle(self):
+        center = self.parameters["center_points"][0]
+        length = 60
+        heigth = 60
+        points = []
+        points.append(pc.point(center[0]-length/2, center[1] -heigth/2, 0))
+        points.append(pc.point(center[0]+length/2, center[1] -heigth/2, 0))
+        points.append(pc.point(center[0]+length/2, center[1]+heigth/2, 0))
+        points.append(pc.point(center[0]-length/2, center[1]+heigth/2, 0))
+        points.append(pc.point(center[0]-length/2, center[1]-heigth/2, 0))
+        return points
+
+    def simple_circle(self):
+        center = self.parameters["center_points"][0]
+        radius_x = 30
+        radius_y = 30
+        points = []
+        num_points = 100
+        for i in range(num_points):
+            angle = (2 * np.pi * i) / num_points
+            x = center[0] + radius_x * np.cos(angle)
+            y = center[1] + radius_y * np.sin(angle)
+            points.append(pc.point(x, y, 0))
+        points.append(points[0])  # Close the circle by adding the first point again
+        return points
     
     def update_parameters(self, data):
         self.parameters["shape"] = data["shape"]
@@ -49,7 +74,8 @@ class Shapehandler:
         self.parameters["pattern_height"] = data["pattern_height"]
         self.parameters["pattern_width"] = data["pattern_width"]
         self.parameters["inactive"] = data["inactive"]
-        self.parameters["feature_vector"] = data["feature_vector"]
+        self.parameters["pattern_range"] = data["pattern_range"]
+        #self.parameters["feature_vector"] = data["feature_vector"]
         #self.parameters["center_points"] = data["center_points"]
         self.parameters["pattern_spacing"] = int(data["pattern_spacing"])
         #initialize the current diameter only at the very beginning
@@ -90,7 +116,10 @@ class Shapehandler:
                 for j in range(0,num_points):
                     new_point = start + j * segment_length * direction
                     perpendicular = np.array([-direction[1], direction[0], 0])
-                    points.append(new_point + (perpendicular * displacement[(i*num_points)+j][1]) + (direction * displacement[(i*num_points)+j][0]))
+                    if i == 0:
+                        points.append(new_point + (perpendicular * displacement[(i*num_points)+j][1]) + (direction * displacement[(i*num_points)+j][0]))
+                    else:
+                        points.append(new_point)
                     if i == 0 and j == 0:
                         start_ = new_point + (perpendicular * displacement[(i*num_points)+j][1]) + (direction * displacement[(i*num_points)+j][0])
                     
@@ -150,6 +179,8 @@ class Shapehandler:
                 x = -x
                 multiplicator *= -1
             goal = (x,y * multiplicator)
+            if i > self.parameters["pattern_range"]:
+                goal = (0,0)
 
             if len(self.previous_vector) < resolution:
                 displacement.append(goal)
@@ -159,6 +190,12 @@ class Shapehandler:
                 # Multiply the vector by a factor (e.g., 0.1)
                 scaled_vector = (vector[0] * 0.5, vector[1] * 0.5)
                 new_displacement = (self.previous_vector[i][0] + scaled_vector[0], self.previous_vector[i][1] + scaled_vector[1])
+                x, y = new_displacement
+                if x < 0.1:
+                    x = 0
+                if y < 0.1:
+                    y = 0
+                new_displacement = (x, y)
                 displacement.append(new_displacement)
                 self.previous_vector[i] = new_displacement
             
@@ -171,7 +208,11 @@ class Shapehandler:
             return self.previous_points
         
         points = []
+        #if layer < 2:
+         #   self.parameters["pattern_height"] = 0
+          #  self.parameters["pattern_width"] = 0
         displacement = self.generate_path()
+        
         # gradually update center points shift
         center = self.parameters["center_points"][0]
         center_distance = pc.distance(center,self.parameters["growth_direction"])

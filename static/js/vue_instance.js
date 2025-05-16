@@ -39,6 +39,10 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         },
         shape_options: {
             repetitions: 1,
+            diameter_x: 60,
+            diameter_y: 60,
+            pattern_range:60,
+            pattern_amplitude: 8,
         },
         toolpath_type: "straight",
         plate_center_x: 100,

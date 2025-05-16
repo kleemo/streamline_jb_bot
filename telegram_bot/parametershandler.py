@@ -19,11 +19,13 @@ class ParametersHandler():
         self.rotation = 0
         self.bugs = 0
         self.pattern_height = 8
+        self.current_pattern_height = 8
         self.pattern_width = 2
         self.pattern_spacing = 2
         self.inactive = False
         self.feature_vector = []
         self.num_center_points = 4
+        self.pattern_range = 60
 
     def set_diameter(self, input_type, input):
         if input_type == "text":
@@ -69,6 +71,8 @@ class ParametersHandler():
         self.growth_direction = ((longitude - ref_lon) * 200, (latiude - ref_lat)*200)
     
     def get_parameters(self):
+        if self.current_pattern_height > 0:
+            self.current_pattern_height = self.pattern_height
         data = {
             "shape": self.shape,
             "diameter": self.diameter,
@@ -76,12 +80,13 @@ class ParametersHandler():
             "pattern": self.pattern,
             "rotation": self.rotation,
             "bugs": self.bugs,
-            "pattern_height": self.pattern_height,
+            "pattern_height": self.current_pattern_height,
             "pattern_width": self.pattern_width,
             "pattern_spacing": self.pattern_spacing,
             "inactive": self.inactive,
             #"feature_vector": self.feature_vector,
-            "center_points": self.num_center_points,
+            "center_points": 1,#self.num_center_points
+            "pattern_range": self.pattern_range,
         }
         self.bugs = 0
         return data
@@ -95,12 +100,17 @@ class ParametersHandler():
             scores = openai_image_scores(image_url)
             coherence_score = 0.5
         else:
-            scores, coherence_score = openai_text_scores(user_text, self.accumulated_chat)
+            scores, coherence = openai_text_scores(user_text, self.accumulated_chat)
+            if self.accumulated_user_text == "":
+                coherence_score = 0.5
+            else:
+                coherence_score = coherence
+            
         motivation_score = 0.5 # default if AI fails
         dynamics_score = 0.5
         complexity_score = 0.5
         # Debugging: Print raw AI response
-        print(f"Raw AI response (repr): {repr(scores)}")
+        #print(f"Raw AI response (repr): {repr(scores)}")
 
         # Default scores
         motivation_score = 0.5  # Default if AI fails
@@ -129,14 +139,14 @@ class ParametersHandler():
         self.pattern_spacing = max_spacing - int(self.map_parameter_to_range(motivation_score, 0, 6, 0, 1))
         self.pattern_width = self.map_parameter_to_range(dynamics_score, -4, 4, 0, 1)
         # Set number of center points based on the complexity score
-        num_center_points = int(self.map_parameter_to_range(complexity_score, 1, 4, 0, 1))
+        num_center_points = int(self.map_parameter_to_range(complexity_score, 1, 6, 0, 1))
         if (self.shape == "none" or (self.shape == "circle" and image_url == None) or (self.shape == "rectangle" and image_url != None)):
             self.num_center_points = num_center_points
         # set pattern to straight line if the coherence score is low    
         if coherence_score < 0.5:
-            self.pattern_height = 0
+            self.current_pattern_height = 0
         else:
-            self.pattern_height = 8
+            self.current_pattern_height = self.pattern_height
 
         print(f"Scores: Motivation: {motivation_score}, Dynamics: {dynamics_score}, Complexity: {complexity_score}, Coherence: {coherence_score}")      
 

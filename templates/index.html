@@ -67,9 +67,20 @@
 					<div class="slicer">
 						<h4>Shape</h4>
 						<p>Number of repetitions per layer: [[ shape_options.repetitions ]]</p>
-						<!-- <input v-model="slicer_options.extrusion_rate" placeholder=""> -->
 						<vue-range-slider :tooltip="null" :min="+1" :max="+3" :step="+1" ref="slider"
 							v-model="shape_options.repetitions"></vue-range-slider>
+						<p>Range to apply line pattern: [[ shape_options.pattern_range ]]</p>
+						<vue-range-slider :tooltip="null" :min="+1" :max="+120" :step="+1" ref="slider"
+							v-model="shape_options.pattern_range"></vue-range-slider>
+						<p>x-diameter: [[ shape_options.diameter_x ]]</p>
+						<vue-range-slider :tooltip="null" :min="+1" :max="+300" :step="+1" ref="slider"
+							v-model="shape_options.diameter_x"></vue-range-slider>
+						<p>y-diameter: [[ shape_options.diameter_y ]]</p>
+						<vue-range-slider :tooltip="null" :min="+1" :max="+300" :step="+1" ref="slider"
+							v-model="shape_options.diameter_y"></vue-range-slider>
+						<p>pattern amplitude: [[ shape_options.pattern_amplitude ]]</p>
+						<vue-range-slider :tooltip="null" :min="+1" :max="+100" :step="+1" ref="slider"
+							v-model="shape_options.pattern_amplitude"></vue-range-slider>
 					</div>
 				</div>
 			</div>
