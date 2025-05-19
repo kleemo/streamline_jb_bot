@@ -81,6 +81,12 @@
 						<p>pattern amplitude: [[ shape_options.pattern_amplitude ]]</p>
 						<vue-range-slider :tooltip="null" :min="+1" :max="+100" :step="+1" ref="slider"
 							v-model="shape_options.pattern_amplitude"></vue-range-slider>
+						<p>number of center points: [[ shape_options.num_center_points ]]</p>
+						<vue-range-slider :tooltip="null" :min="+1" :max="+5" :step="+1" ref="slider"
+							v-model="shape_options.num_center_points"></vue-range-slider>
+					</div>
+					<div style="margin-top: 10px;">	
+						<canvas id="centerPointsCanvas" width="400" height="400" style="border:1px solid #757575; background-color: #eaeaea;"></canvas>
 					</div>
 				</div>
 			</div>

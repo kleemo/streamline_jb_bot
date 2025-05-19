@@ -26,7 +26,8 @@ class Shapehandler:
             "rotation": 0,
             "inactive": False,
             "feature_vector": [],
-            "center_points": [(0,0), (30,10),(40,-20),(-30,20)],
+            "center_points": [(0,0), (30,10),(40,-20),(-30,20),(-10,-30)],
+            "growth_directions": [(0, 0), (0, 0), (0, 0), (0, 0), (0,0)],
             "repetitions": 1,
             "pattern_range": 60,
         }
@@ -75,6 +76,7 @@ class Shapehandler:
         self.parameters["pattern_width"] = data["pattern_width"]
         self.parameters["inactive"] = data["inactive"]
         self.parameters["pattern_range"] = data["pattern_range"]
+        self.parameters["growth_directions"] = data["growth_directions"]
         #self.parameters["feature_vector"] = data["feature_vector"]
         #self.parameters["center_points"] = data["center_points"]
         self.parameters["pattern_spacing"] = int(data["pattern_spacing"])
@@ -214,18 +216,13 @@ class Shapehandler:
         displacement = self.generate_path()
         
         # gradually update center points shift
-        center = self.parameters["center_points"][0]
-        center_distance = pc.distance(center,self.parameters["growth_direction"])
-        if center_distance > 0.05:
-            print("center_distance: ", center_distance)
-            direction = pc.normalize(pc.vector(np.array(center), np.array(self.parameters["growth_direction"])))
-            for i in range(len(self.parameters["center_points"])):
+        for i in range(len(self.parameters["center_points"])):
+            center = self.parameters["center_points"][i]
+            center_distance = pc.distance(center,self.parameters["growth_directions"][i])
+            if center_distance > 0.05:
+                print("center_distance: ", center_distance)
+                direction = pc.normalize(pc.vector(np.array(center), np.array(self.parameters["growth_directions"][i])))
                 self.parameters["center_points"][i] += (direction * 0.3)
-                if i % 2 == 0:
-                    direction[0] *= -1
-                else:
-                    direction[1] *= -1
-
                 
         # gradually update diameter
         diameter_distance = pc.distance(self.current_diameter,self.parameters["diameter"])

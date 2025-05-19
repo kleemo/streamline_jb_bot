@@ -43,10 +43,23 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             diameter_y: 60,
             pattern_range:60,
             pattern_amplitude: 8,
+            num_center_points: 4,
+            growth_directions:[[0,0],[0,30],[0,0],[50,0],[0,0]],
+            points: [[0,0], [30,10],[40,-20],[-30,20],[-10,-30]],
         },
         toolpath_type: "straight",
         plate_center_x: 100,
-        plate_center_y: 100
+        plate_center_y: 100,
+        draggedGrowthIndex: null,
+        dragOffset: { x: 0, y: 0 },
+    },
+    mounted() {
+    this.drawCenterPoints();
+    const canvas = document.getElementById('centerPointsCanvas');
+    canvas.addEventListener('mousedown', this.onCanvasMouseDown);
+    canvas.addEventListener('mousemove', this.onCanvasMouseMove);
+    canvas.addEventListener('mouseup', this.onCanvasMouseUp);
+    canvas.addEventListener('mouseleave', this.onCanvasMouseUp);
     },
     watch: {
         // whenever question changes, this function will run
@@ -65,16 +78,17 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             },
             deep: true
         },
+        'shape_options.diameter_x': function(newValue, oldValue) {
+            this.drawCenterPoints();
+        },
+        'shape_options.diameter_y': function(newValue, oldValue) {
+            this.drawCenterPoints();
+        },
+        'shape_options.num_center_points': function(newValue, oldValue) {
+            this.drawCenterPoints();
+        },
         toolpath_type: function (newValue, oldValue) {
             socket.emit('toolpath_type', {'toolpath_type': newValue});
-        },
-        synced_to_bot: function (newValue, oldValue) {
-            if (newValue == false) {
-                this.unpoll()
-            }
-            else {
-                this.poll()
-            }
         },
     },
     computed: { 
@@ -93,6 +107,98 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         },
     },
     methods: {
+        onCanvasMouseDown: function(e) {
+            const canvas = document.getElementById('centerPointsCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const points = this.shape_options.points;
+            const num_points = this.shape_options.num_center_points;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            for (let i = 0; i < num_points; i++) {
+                const cx = centerX + points[i][0] * 2;
+                const cy = centerY + points[i][1] * 2;
+                const direction_x = this.shape_options.growth_directions[i][0];
+                const direction_y = this.shape_options.growth_directions[i][1];
+                const handleX = cx + direction_x;
+                const handleY = cy + direction_y;
+            // Check if mouse is near the handle
+                if (Math.hypot(mouseX - handleX, mouseY - handleY) < 12) {
+                    this.draggedGrowthIndex = i;
+                    this.dragOffset.x = mouseX - handleX;
+                    this.dragOffset.y = mouseY - handleY;
+                    return;
+                }
+            }
+        },
+        onCanvasMouseMove: function(e) {
+            if (this.draggedGrowthIndex === null) return;
+            const canvas = document.getElementById('centerPointsCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const points = this.shape_options.points;
+            const i = this.draggedGrowthIndex;
+            const cx = canvas.width / 2 + points[i][0] * 2;
+            const cy = canvas.height / 2 + points[i][1] * 2;
+
+            // Update growth direction relative to center point
+            this.shape_options.growth_directions[i][0] = mouseX - cx - this.dragOffset.x;
+            this.shape_options.growth_directions[i][1] = mouseY - cy - this.dragOffset.y;
+            this.drawCenterPoints();
+        },
+        onCanvasMouseUp: function(e) {
+            this.draggedGrowthIndex = null;
+        },
+        // draw center points on the canvas
+        drawCenterPoints: function () {
+            console.log("Drawing center points");
+            const canvas = document.getElementById('centerPointsCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const points = this.shape_options.points;
+            const num_points = this.shape_options.num_center_points;
+            const rx = this.shape_options.diameter_x / 2;
+            const ry = this.shape_options.diameter_y / 2;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            for (let i = 0; i < num_points; i++) {
+            const cx = centerX + points[i][0] * 2;
+            const cy = centerY + points[i][1] * 2;
+            // draw outline of ellipse
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, rx*2, ry*2, 0, 0, 2 * Math.PI);
+            ctx.strokeStyle = "#000000";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            // Draw the center
+            ctx.beginPath();
+            ctx.arc(cx, cy, 10, 0, 2 * Math.PI); 
+            ctx.fillStyle = "#757575"; 
+            ctx.fill();
+            //draw growth direction
+            direction_x = this.shape_options.growth_directions[i][0];
+            direction_y = this.shape_options.growth_directions[i][1];
+            ctx.beginPath();
+            ctx.arc(cx + direction_x,  cy + direction_y, 8, 0, 2 * Math.PI); 
+            ctx.fillStyle = "#000"; 
+            ctx.fill();
+            // Draw arrow line
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx + direction_x, cy + direction_y);
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            }
+        },
         move_up: function (event) {
             socket.emit('move_up');
         },

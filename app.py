@@ -30,7 +30,7 @@ parameter_handler = telegram_bot.parametershandler.ParametersHandler("straight")
 
 layer = 0
 height = 0
-height_max = 400
+height_max = 5000
 printing = False
 toggle_state = False
 
@@ -136,6 +136,8 @@ def shape_options(data):
     parameter_handler.diameter = (data["diameter_x"], data["diameter_y"])
     parameter_handler.pattern_range = data["pattern_range"]
     parameter_handler.pattern_height = data["pattern_amplitude"]
+    parameter_handler.num_center_points = data["num_center_points"]
+    parameter_handler.growth_directions = data["growth_directions"]
 
 @socketio.on('printer_connect')
 def printer_connect(port, baud):
@@ -276,7 +278,7 @@ def start_print(data, wobble):
         points = shape_handler.generate_next_layer(layer)#shape_handler.simpple_rectangle()#shape_handler.simple_circle()#shape_handler.simpple_rectangle()#shape_handler.generate_next_layer(layer)
 
         # print outline of the shape first
-        gcode = slicer_handler.create(height, points, max_distance=200)
+        gcode = slicer_handler.create(height, points, max_distance=25)
         print_handler.send(gcode)    
         while (print_handler.is_printing() or print_handler.is_paused()):
             time.sleep(2)

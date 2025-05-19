@@ -16,6 +16,7 @@ class ParametersHandler():
         self.shape = "none"
         self.diameter = (60,60)
         self.growth_direction = (0, 0),
+        self.growth_directions = [(0, 0), (0, 0), (0, 0), (0, 0), (0,0)],
         self.rotation = 0
         self.bugs = 0
         self.pattern_height = 8
@@ -85,8 +86,9 @@ class ParametersHandler():
             "pattern_spacing": self.pattern_spacing,
             "inactive": self.inactive,
             #"feature_vector": self.feature_vector,
-            "center_points": 1,#self.num_center_points
+            "center_points": self.num_center_points,
             "pattern_range": self.pattern_range,
+            "growth_directions": self.growth_directions,
         }
         self.bugs = 0
         return data
@@ -140,8 +142,8 @@ class ParametersHandler():
         self.pattern_width = self.map_parameter_to_range(dynamics_score, -4, 4, 0, 1)
         # Set number of center points based on the complexity score
         num_center_points = int(self.map_parameter_to_range(complexity_score, 1, 6, 0, 1))
-        if (self.shape == "none" or (self.shape == "circle" and image_url == None) or (self.shape == "rectangle" and image_url != None)):
-            self.num_center_points = num_center_points
+        #if (self.shape == "none" or (self.shape == "circle" and image_url == None) or (self.shape == "rectangle" and image_url != None)):
+            #self.num_center_points = num_center_points
         # set pattern to straight line if the coherence score is low    
         if coherence_score < 0.5:
             self.current_pattern_height = 0
