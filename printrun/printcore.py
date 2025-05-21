@@ -541,10 +541,10 @@ class printcore():
         self.print_thread = None
 
         # Save additional state information
-        self.saved_state = {
-            'relative': self.relative,
-            'relative_e': self.relative_e,
-        }
+        #self.saved_state = {
+         #   'relative': self.relative,
+          #  'relative_e': self.relative_e,
+        #}
 
         # saves the status
         self.pauseX = self.analyzer.abs_x

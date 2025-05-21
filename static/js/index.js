@@ -23,6 +23,9 @@ socket.on('connected', (data) => {
 socket.on('toolpath_type', (data) => {
     vm.toolpath_type = data.toolpath_type
 });
+socket.on('update_current_shape', (data) => {
+    vm.current_shape = data
+});
 
 // Listen for the trigger_print event and call the print function
 socket.on('trigger_print', function() {

@@ -65,28 +65,60 @@
 							v-model="slicer_options.layer_hight"></vue-range-slider>
 					</div>
 					<div class="slicer">
-						<h4>Shape</h4>
+						<h4>Layer</h4>
 						<p>Number of repetitions per layer: [[ shape_options.repetitions ]]</p>
 						<vue-range-slider :tooltip="null" :min="+1" :max="+3" :step="+1" ref="slider"
 							v-model="shape_options.repetitions"></vue-range-slider>
 						<p>Range to apply line pattern: [[ shape_options.pattern_range ]]</p>
 						<vue-range-slider :tooltip="null" :min="+1" :max="+120" :step="+1" ref="slider"
 							v-model="shape_options.pattern_range"></vue-range-slider>
-						<p>x-diameter: [[ shape_options.diameter_x ]]</p>
-						<vue-range-slider :tooltip="null" :min="+1" :max="+300" :step="+1" ref="slider"
-							v-model="shape_options.diameter_x"></vue-range-slider>
-						<p>y-diameter: [[ shape_options.diameter_y ]]</p>
-						<vue-range-slider :tooltip="null" :min="+1" :max="+300" :step="+1" ref="slider"
-							v-model="shape_options.diameter_y"></vue-range-slider>
 						<p>pattern amplitude: [[ shape_options.pattern_amplitude ]]</p>
 						<vue-range-slider :tooltip="null" :min="+1" :max="+100" :step="+1" ref="slider"
 							v-model="shape_options.pattern_amplitude"></vue-range-slider>
-						<p>number of center points: [[ shape_options.num_center_points ]]</p>
-						<vue-range-slider :tooltip="null" :min="+1" :max="+5" :step="+1" ref="slider"
-							v-model="shape_options.num_center_points"></vue-range-slider>
 					</div>
-					<div style="margin-top: 10px;">	
-						<canvas id="centerPointsCanvas" width="400" height="400" style="border:1px solid #757575; background-color: #eaeaea;"></canvas>
+					<h4>Shape</h4>
+					<div class="shape-flex-row">	
+						<div>
+							<p>base:</p>
+							<div class="center-point-buttons">
+    							<button
+        							v-for="n in ['circle', 'rectangle']"
+        							:key="n"
+        							:class="{ selected: shape_options.base_shape === n }"
+        							@click="shape_options.base_shape= n"
+        							type="button"
+    								>[[ n ]]</button>
+							</div>
+							<p>filling (spacing between fill lines):</p>
+							<div class="center-point-buttons">
+    							<button
+        							v-for="n in [0,10,20,30]"
+        							:key="n"
+        							:class="{ selected: shape_options.filling === n }"
+        							@click="shape_options.filling = n"
+        							type="button"
+    								>[[ n ]]</button>
+							</div>
+							<p>number of center points:</p>
+							<div class="center-point-buttons">
+    							<button
+        							v-for="n in 5"
+        							:key="n"
+        							:class="{ selected: shape_options.num_center_points === n }"
+        							@click="shape_options.num_center_points = n"
+        							type="button"
+    								>[[ n ]]</button>
+							</div>
+							<p>x-diameter: [[ shape_options.diameter_x ]]</p>
+								<vue-range-slider :tooltip="null" :min="+1" :max="+300" :step="+1" ref="slider"
+								v-model="shape_options.diameter_x"></vue-range-slider>
+							<p>y-diameter: [[ shape_options.diameter_y ]]</p>
+								<vue-range-slider :tooltip="null" :min="+1" :max="+300" :step="+1" ref="slider"
+								v-model="shape_options.diameter_y"></vue-range-slider>
+						</div>
+						<div>
+							<canvas id="centerPointsCanvas" width="400" height="400" style="border:1px solid #757575; background-color: #eaeaea;"></canvas>
+						</div>
 					</div>
 				</div>
 			</div>

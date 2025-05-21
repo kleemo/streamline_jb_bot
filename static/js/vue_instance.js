@@ -39,13 +39,20 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         },
         shape_options: {
             repetitions: 1,
+            base_shape: "circle",
             diameter_x: 60,
             diameter_y: 60,
             pattern_range:60,
             pattern_amplitude: 8,
             num_center_points: 4,
-            growth_directions:[[0,0],[0,30],[0,0],[50,0],[0,0]],
+            growth_directions:[[0,0], [30,10],[40,-20],[-30,20],[-10,-30]],
             points: [[0,0], [30,10],[40,-20],[-30,20],[-10,-30]],
+            filling: 0,
+        },
+        current_shape: {
+            center_points: [[0,0], [30,10],[40,-20],[-30,20],[-10,-30]],
+            diameter_x: 60,
+            diameter_y: 60,
         },
         toolpath_type: "straight",
         plate_center_x: 100,
@@ -72,6 +79,12 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             },
             deep: true
         },
+        current_shape: {
+            handler: function (newValue, oldValue) {
+                this.drawCenterPoints();
+            },
+            deep: true
+        },
         shape_options: {
             handler: function (newValue, oldValue) {
                 socket.emit('shape_options', this.shape_options);
@@ -85,6 +98,9 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             this.drawCenterPoints();
         },
         'shape_options.num_center_points': function(newValue, oldValue) {
+            this.drawCenterPoints();
+        },
+        'shape_options.base_shape': function(newValue, oldValue) {
             this.drawCenterPoints();
         },
         toolpath_type: function (newValue, oldValue) {
@@ -113,18 +129,15 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
 
-            const points = this.shape_options.points;
             const num_points = this.shape_options.num_center_points;
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
 
             for (let i = 0; i < num_points; i++) {
-                const cx = centerX + points[i][0] * 2;
-                const cy = centerY + points[i][1] * 2;
-                const direction_x = this.shape_options.growth_directions[i][0];
-                const direction_y = this.shape_options.growth_directions[i][1];
-                const handleX = cx + direction_x;
-                const handleY = cy + direction_y;
+                const direction_x = this.shape_options.growth_directions[i][0]*2;
+                const direction_y = this.shape_options.growth_directions[i][1]*2;
+                const handleX = centerX + direction_x;
+                const handleY = centerY + direction_y;
             // Check if mouse is near the handle
                 if (Math.hypot(mouseX - handleX, mouseY - handleY) < 12) {
                     this.draggedGrowthIndex = i;
@@ -141,18 +154,19 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
 
-            const points = this.shape_options.points;
             const i = this.draggedGrowthIndex;
-            const cx = canvas.width / 2 + points[i][0] * 2;
-            const cy = canvas.height / 2 + points[i][1] * 2;
+            const cx = canvas.width / 2 ;
+            const cy = canvas.height / 2 ;
 
             // Update growth direction relative to center point
-            this.shape_options.growth_directions[i][0] = mouseX - cx - this.dragOffset.x;
-            this.shape_options.growth_directions[i][1] = mouseY - cy - this.dragOffset.y;
+            this.shape_options.growth_directions[i][0] = (mouseX - cx - this.dragOffset.x)/2;
+            this.shape_options.growth_directions[i][1] = (mouseY - cy - this.dragOffset.y)/2;
             this.drawCenterPoints();
         },
         onCanvasMouseUp: function(e) {
             this.draggedGrowthIndex = null;
+            // Emit the updated growth_directions to the server
+            socket.emit('shape_options', this.shape_options);
         },
         // draw center points on the canvas
         drawCenterPoints: function () {
@@ -170,12 +184,36 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             const centerY = canvas.height / 2;
             
             for (let i = 0; i < num_points; i++) {
+            if (i <= this.current_shape.center_points.length) {
+                points[i][0] = this.current_shape.center_points[i][0];
+                points[i][1] = this.current_shape.center_points[i][1];
+            }
             const cx = centerX + points[i][0] * 2;
             const cy = centerY + points[i][1] * 2;
             // draw outline of ellipse
             ctx.beginPath();
-            ctx.ellipse(cx, cy, rx*2, ry*2, 0, 0, 2 * Math.PI);
+            if (this.shape_options.base_shape === "rectangle") {
+            // Draw rectangle centered at (cx, cy)
+                ctx.rect(cx - rx * 2, cy - ry * 2, rx * 4, ry * 4);
+            } else {
+            // Draw ellipse
+                ctx.ellipse(cx, cy, rx * 2, ry * 2, 0, 0, 2 * Math.PI);
+            }
             ctx.strokeStyle = "#000000";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            // draw current diameter
+            const crx = this.current_shape.diameter_x / 2;
+            const cry = this.current_shape.diameter_y / 2;
+            ctx.beginPath();
+            if (this.shape_options.base_shape === "rectangle" && this.layer > 0) {
+            // Draw rectangle centered at (cx, cy)
+                ctx.rect(cx - crx * 2, cy - cry * 2, crx * 4, cry * 4);
+            } else if (this.layer > 0) {
+            // Draw ellipse
+                ctx.ellipse(cx, cy, crx * 2, cry * 2, 0, 0, 2 * Math.PI);
+            }
+            ctx.strokeStyle = "#757575";
             ctx.lineWidth = 2;
             ctx.stroke();
             // Draw the center
@@ -184,16 +222,16 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             ctx.fillStyle = "#757575"; 
             ctx.fill();
             //draw growth direction
-            direction_x = this.shape_options.growth_directions[i][0];
-            direction_y = this.shape_options.growth_directions[i][1];
+            direction_x = this.shape_options.growth_directions[i][0]*2;
+            direction_y = this.shape_options.growth_directions[i][1]*2;
             ctx.beginPath();
-            ctx.arc(cx + direction_x,  cy + direction_y, 8, 0, 2 * Math.PI); 
+            ctx.arc(centerX + direction_x,  centerY + direction_y, 8, 0, 2 * Math.PI); 
             ctx.fillStyle = "#000"; 
             ctx.fill();
             // Draw arrow line
             ctx.beginPath();
             ctx.moveTo(cx, cy);
-            ctx.lineTo(cx + direction_x, cy + direction_y);
+            ctx.lineTo(centerX + direction_x, centerY + direction_y);
             ctx.strokeStyle = "#000";
             ctx.lineWidth = 2;
             ctx.stroke();

@@ -14,9 +14,10 @@ class ParametersHandler():
         self.accumulated_user_text = ""
         self.num_input = 0
         self.shape = "none"
+        self.base_shape = "circle"
         self.diameter = (60,60)
-        self.growth_direction = (0, 0),
-        self.growth_directions = [(0, 0), (0, 0), (0, 0), (0, 0), (0,0)],
+        self.growth_direction = (0, 0)
+        self.growth_directions = [(0,0), (30,10),(40,-20),(-30,20),(-10,-30)]
         self.rotation = 0
         self.bugs = 0
         self.pattern_height = 8
@@ -27,6 +28,7 @@ class ParametersHandler():
         self.feature_vector = []
         self.num_center_points = 4
         self.pattern_range = 60
+        self.filling = 0
 
     def set_diameter(self, input_type, input):
         if input_type == "text":
@@ -76,6 +78,7 @@ class ParametersHandler():
             self.current_pattern_height = self.pattern_height
         data = {
             "shape": self.shape,
+            "base_shape": self.base_shape,
             "diameter": self.diameter,
             "growth_direction": self.growth_direction,
             "pattern": self.pattern,
@@ -86,7 +89,7 @@ class ParametersHandler():
             "pattern_spacing": self.pattern_spacing,
             "inactive": self.inactive,
             #"feature_vector": self.feature_vector,
-            "center_points": self.num_center_points,
+            "num_center_points": self.num_center_points,
             "pattern_range": self.pattern_range,
             "growth_directions": self.growth_directions,
         }

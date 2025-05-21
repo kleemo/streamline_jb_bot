@@ -17,6 +17,7 @@ class Shapehandler:
         self.previous_points = []
         self.parameters = { #new parameters
             "shape": "none",
+            "base_shape": "circle",
             "diameter": (0,0),
             "growth_direction": (0, 0),
             "pattern": "none",
@@ -27,7 +28,7 @@ class Shapehandler:
             "inactive": False,
             "feature_vector": [],
             "center_points": [(0,0), (30,10),(40,-20),(-30,20),(-10,-30)],
-            "growth_directions": [(0, 0), (0, 0), (0, 0), (0, 0), (0,0)],
+            "growth_directions": [(0,0), (30,10),(40,-20),(-30,20),(-10,-30)],
             "repetitions": 1,
             "pattern_range": 60,
         }
@@ -68,6 +69,7 @@ class Shapehandler:
     
     def update_parameters(self, data):
         self.parameters["shape"] = data["shape"]
+        self.parameters["base_shape"] = data["base_shape"]
         self.parameters["diameter"] = data["diameter"]
         self.parameters["growth_direction"] = data["growth_direction"]
         self.parameters["pattern"] = data["pattern"]
@@ -89,8 +91,9 @@ class Shapehandler:
         if max(self.current_diameter[0], self.current_diameter[1]) < 15 and self.parameters["pattern_height"] > 4:
             self.parameters["pattern_height"] = 4
         #reduce number of center points if applicable
-        if len(self.parameters["center_points"]) > data["center_points"]:
-            self.parameters["center_points"] = self.parameters["center_points"][:data["center_points"]]
+        print("num_center_points: ", data["num_center_points"])
+        if len(self.parameters["center_points"]) > data["num_center_points"]:
+            self.parameters["center_points"] = self.parameters["center_points"][:data["num_center_points"]]
         print("Updated parameters: ", self.parameters)
     
     def generate_rectangle(self,displacement):
@@ -118,10 +121,8 @@ class Shapehandler:
                 for j in range(0,num_points):
                     new_point = start + j * segment_length * direction
                     perpendicular = np.array([-direction[1], direction[0], 0])
-                    if i == 0:
-                        points.append(new_point + (perpendicular * displacement[(i*num_points)+j][1]) + (direction * displacement[(i*num_points)+j][0]))
-                    else:
-                        points.append(new_point)
+                    points.append(new_point + (perpendicular * displacement[(i*num_points)+j][1]) + (direction * displacement[(i*num_points)+j][0]))
+                    
                     if i == 0 and j == 0:
                         start_ = new_point + (perpendicular * displacement[(i*num_points)+j][1]) + (direction * displacement[(i*num_points)+j][0])
                     
@@ -202,6 +203,7 @@ class Shapehandler:
                 self.previous_vector[i] = new_displacement
             
          #print("displacement: ", displacement)
+         print("displacement start: ", displacement[0])
          return displacement
     
     def generate_next_layer(self,layer):
@@ -210,9 +212,6 @@ class Shapehandler:
             return self.previous_points
         
         points = []
-        #if layer < 2:
-         #   self.parameters["pattern_height"] = 0
-          #  self.parameters["pattern_width"] = 0
         displacement = self.generate_path()
         
         # gradually update center points shift
@@ -231,9 +230,9 @@ class Shapehandler:
             self.current_diameter += direction 
             print("current_diameter: ", self.current_diameter)
 
-        if self.parameters["shape"] == "rectangle":
+        if self.parameters["base_shape"] == "rectangle":
             points = self.generate_rectangle(displacement)
-        elif self.parameters["shape"] == "circle":
+        elif self.parameters["base_shape"] == "circle":
             points = self.generate_circle(displacement)
 
         #appply rotation of layer
@@ -248,6 +247,7 @@ class Shapehandler:
             points[i] = pc.rotate(points[i],pc.point(center_of_mass_x,center_of_mass_y,0) , self.current_rotation)
             
         self.previous_points = points
+        print("points start: ", points[0])
         return points
     
     def generate_infill(self, points, spacing=10, angle=0):

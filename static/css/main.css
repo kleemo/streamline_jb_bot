@@ -136,3 +136,32 @@ button {
     padding: 0.5rem 0;
     border-top: 1px dotted black;
 }
+
+.shape-flex-row {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start; /* or center */
+    gap: 2rem; /* optional: space between the two divs */
+    width: 100vw;           /* Fill the viewport width */
+    box-sizing: border-box;
+}
+.shape-flex-row > div {
+    flex: 1; /* This will make both divs take equal space */
+    padding: 0.5rem;
+    box-sizing: border-box; /* Include padding in width calculation */
+}
+
+.center-point-buttons button {
+    margin: 0 4px;
+    padding: 0.5em 1em;
+    border: 1px solid #757575;
+    background: #eaeaea;
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: bold;
+}
+.center-point-buttons button.selected {
+    background: #007bff;
+    color: #fff;
+    border-color: #0056b3;
+}

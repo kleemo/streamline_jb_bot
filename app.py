@@ -138,6 +138,9 @@ def shape_options(data):
     parameter_handler.pattern_height = data["pattern_amplitude"]
     parameter_handler.num_center_points = data["num_center_points"]
     parameter_handler.growth_directions = data["growth_directions"]
+    parameter_handler.base_shape = data["base_shape"]
+    parameter_handler.filling = data["filling"]
+    print("shape_options", data)
 
 @socketio.on('printer_connect')
 def printer_connect(port, baud):
@@ -284,17 +287,19 @@ def start_print(data, wobble):
             time.sleep(2)
             print("print status :",print_handler.status())
         # generate and print infill of the shape
-        #infill = shape_handler.generate_infill(points)
-        #gcode = slicer_handler.create(height, infill, max_distance=100)
-        #print("infill gcode", gcode)
-        #print_handler.send(gcode)
-        #while (print_handler.is_printing() or print_handler.is_paused()):
-            #time.sleep(2)
-            #print("print status :",print_handler.status())
+        if parameter_handler.filling > 0:
+            infill = shape_handler.generate_infill(points, spacing=parameter_handler.filling)
+            gcode = slicer_handler.create(height, infill, max_distance=200)
+            print_handler.send(gcode)
+            while (print_handler.is_printing() or print_handler.is_paused()):
+                time.sleep(2)
+                print("print status :",print_handler.status())
         # update layer height
         layer = layer + 1
         height = height + slicer_handler.params['layer_hight']
         emit('layer', {'layer': layer}) #"We are on Layer" – Output
+        center_points = [list(pt) for pt in shape_handler.parameters["center_points"]]
+        emit('update_current_shape',{'center_points':center_points,'diameter_x': shape_handler.current_diameter[0], 'diameter_y': shape_handler.current_diameter[1]})
         time.sleep(3)  # Wait 10 seconds for simulation
             
             
