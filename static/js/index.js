@@ -7,6 +7,9 @@ socket.on('connect', function() {
 socket.on('layer', (data) => {
     vm.layer = data.layer
 });
+socket.on('start_print', (data) => {
+    vm.printing = true;
+});
 
 socket.on('slicer_options', (data) => {
     vm.slicer_options = data

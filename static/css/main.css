@@ -89,7 +89,7 @@ p {
 }
 
 #sidebar {
-    background-color: #68f503;
+    background-color: #ffc6c6;
     padding: 160px 10px 10px 10px;
     width: 100%;
 }
@@ -113,9 +113,9 @@ p {
 }
 
 button {
-    background-color: black;
+    background-color: whitesmoke;
     border: none;
-    color: white;
+    color: black;
     padding: 5px 25px;
     text-align: center;
     text-decoration: none;

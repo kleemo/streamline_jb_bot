@@ -17,7 +17,8 @@ class ParametersHandler():
         self.base_shape = "circle"
         self.diameter = (60,60)
         self.growth_direction = (0, 0)
-        self.growth_directions = [(0,0), (30,10),(40,-20),(-30,20),(-10,-30)]
+        self.growth_directions = [(-40,50), (40,5),(-40,-30),(-30,20),(-10,-30)]
+        self.center_points = [(-40,50), (40,5),(-40,-30),(-30,20),(-10,-30)]
         self.rotation = 0
         self.bugs = 0
         self.pattern_height = 8
@@ -90,6 +91,7 @@ class ParametersHandler():
             "inactive": self.inactive,
             #"feature_vector": self.feature_vector,
             "num_center_points": self.num_center_points,
+            "center_points": self.center_points,
             "pattern_range": self.pattern_range,
             "growth_directions": self.growth_directions,
         }
@@ -148,10 +150,10 @@ class ParametersHandler():
         #if (self.shape == "none" or (self.shape == "circle" and image_url == None) or (self.shape == "rectangle" and image_url != None)):
             #self.num_center_points = num_center_points
         # set pattern to straight line if the coherence score is low    
-        if coherence_score < 0.5:
-            self.current_pattern_height = 0
-        else:
-            self.current_pattern_height = self.pattern_height
+        #if coherence_score < 0.5:
+         #   self.current_pattern_height = 0
+        #else:
+         #   self.current_pattern_height = self.pattern_height
 
         print(f"Scores: Motivation: {motivation_score}, Dynamics: {dynamics_score}, Complexity: {complexity_score}, Coherence: {coherence_score}")      
 

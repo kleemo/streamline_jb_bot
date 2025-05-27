@@ -38,7 +38,7 @@ class Slicerhandler:
 
         i = 0
         
-        gcode.append("G1 Z" + str(height + 3 )) #+ self.params['layer_hight'] #3 for printing on the extra plate
+        gcode.append("G1 Z" + str(height + 49.5 )) #+ self.params['layer_hight'] #3 for printing on the extra plate
         gcode.append("G1 X" + str(points[0][0]) + " Y" + str(points[0][1]))
         gcode.append("G92 E0")
         gcode.append("G1 E5 F500")

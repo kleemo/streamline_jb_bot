@@ -69,7 +69,7 @@ def telegram_webhook():
             if parameter_handler.shape == "none" or parameter_handler.shape == "circle":
                 parameter_handler.shape = "circle"
                 #parameter_handler.set_diameter("text", text)
-            send_message_to_telegram(chat_id, f"streamline: {ai_response}")
+            send_message_to_telegram(chat_id, ai_response)
 
         if "photo" in update["message"]:
             print("photo received")
@@ -140,6 +140,7 @@ def shape_options(data):
     parameter_handler.growth_directions = data["growth_directions"]
     parameter_handler.base_shape = data["base_shape"]
     parameter_handler.filling = data["filling"]
+    parameter_handler.center_points = data["points"]
     print("shape_options", data)
 
 @socketio.on('printer_connect')
@@ -243,6 +244,7 @@ def start_print(data, wobble):
         original_points.append(pc.point(point[0], point[1], 0))
     
     printing = True
+    emit('start_print', {'printing': printing})
     toggle_state = False
 
     emit('printer_status', {'status': 'printing'})
@@ -278,22 +280,28 @@ def start_print(data, wobble):
             parameter_handler.handle_inactivity(chat_activity)
             chat_activity = 0
             shape_handler.update_parameters(parameter_handler.get_parameters())
-        points = shape_handler.generate_next_layer(layer)#shape_handler.simpple_rectangle()#shape_handler.simple_circle()#shape_handler.simpple_rectangle()#shape_handler.generate_next_layer(layer)
+        shapes = shape_handler.generate_next_layer(layer)#shape_handler.simpple_rectangle()#shape_handler.simple_circle()#shape_handler.simpple_rectangle()#shape_handler.generate_next_layer(layer)
 
-        # print outline of the shape first
-        gcode = slicer_handler.create(height, points, max_distance=25)
-        print_handler.send(gcode)    
-        while (print_handler.is_printing() or print_handler.is_paused()):
-            time.sleep(2)
-            print("print status :",print_handler.status())
-        # generate and print infill of the shape
-        if parameter_handler.filling > 0:
-            infill = shape_handler.generate_infill(points, spacing=parameter_handler.filling)
-            gcode = slicer_handler.create(height, infill, max_distance=200)
-            print_handler.send(gcode)
-            while (print_handler.is_printing() or print_handler.is_paused()):
-                time.sleep(2)
-                print("print status :",print_handler.status())
+        # print outline and infill of each shape
+        for points in shapes:
+            if len(points) > 0:
+                #print outline of the shape
+                gcode = slicer_handler.create(height, points, max_distance=200)
+                print_handler.send(gcode)
+                while (print_handler.is_printing() or print_handler.is_paused()):
+                    time.sleep(2)
+                    print("print status :",print_handler.status())
+                # generate and print infill of the shapes
+                if parameter_handler.filling > 0:
+                    infill = shape_handler.generate_infill(points, spacing=parameter_handler.filling)
+                    if len(infill) == 0:
+                        print("no infill generated")
+                        continue
+                    gcode = slicer_handler.create(height, infill, max_distance=500)
+                    print_handler.send(gcode)
+                    while (print_handler.is_printing() or print_handler.is_paused()):
+                        time.sleep(2)
+                        print("print status :",print_handler.status())
         # update layer height
         layer = layer + 1
         height = height + slicer_handler.params['layer_hight']

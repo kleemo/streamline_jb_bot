@@ -14,7 +14,10 @@ class Shapehandler:
         self.current_rotation = 0
         self.current_diameter = (0,0)
         self.previous_vector = []
-        self.previous_points = []
+        self.previous_shapes = []
+        self.fixed_thetas = []
+        self.fixed_closest_ids = []
+        self.current_layer = 0 
         self.parameters = { #new parameters
             "shape": "none",
             "base_shape": "circle",
@@ -27,8 +30,8 @@ class Shapehandler:
             "rotation": 0,
             "inactive": False,
             "feature_vector": [],
-            "center_points": [(0,0), (30,10),(40,-20),(-30,20),(-10,-30)],
-            "growth_directions": [(0,0), (30,10),(40,-20),(-30,20),(-10,-30)],
+            "center_points": [(-40,50), (40,5),(-40,-30),(-30,20),(-10,-30)],
+            "growth_directions": [(-40,50), (40,5),(-40,-30),(-30,20),(-10,-30)],
             "repetitions": 1,
             "pattern_range": 60,
         }
@@ -79,6 +82,7 @@ class Shapehandler:
         self.parameters["inactive"] = data["inactive"]
         self.parameters["pattern_range"] = data["pattern_range"]
         self.parameters["growth_directions"] = data["growth_directions"]
+        self.parameters["center_points"] = data["center_points"]
         #self.parameters["feature_vector"] = data["feature_vector"]
         #self.parameters["center_points"] = data["center_points"]
         self.parameters["pattern_spacing"] = int(data["pattern_spacing"])
@@ -96,64 +100,103 @@ class Shapehandler:
             self.parameters["center_points"] = self.parameters["center_points"][:data["num_center_points"]]
         print("Updated parameters: ", self.parameters)
     
-    def generate_rectangle(self,displacement):
+    def generate_rectangle(self,displacement, cx, cy, index):
         points = []
         length = self.current_diameter[0]
         heigth = self.current_diameter[1]
+        corners = [
+        pc.point(cx-length/2, cy-heigth/2, 0),
+        pc.point(cx+length/2, cy-heigth/2, 0),
+        pc.point(cx+length/2, cy+heigth/2, 0),
+        pc.point(cx-length/2, cy+heigth/2, 0)
+        ]
+        # Find the index of the corner closest to the origin
+        closest_idx = min(range(len(corners)), key=lambda i: corners[i][0]**2 + corners[i][1]**2)
+        if self.current_layer == 0:
+            self.fixed_closest_ids.append(closest_idx)
+        closest_idx = self.fixed_closest_ids[index]
+        # Reorder so the closest point is first, and preserve order (wrap around)
+        ordered_corners = corners[closest_idx:] + corners[:closest_idx]
+        # Optionally close the rectangle by repeating the first point
+        ordered_corners.append(ordered_corners[0])
+        guide_points = ordered_corners
 
-        for k in range(len(self.parameters["center_points"])):
-            guide_points = []
-            center = self.parameters["center_points"][k]
-            guide_points.append(pc.point(center[0]-length/2, center[1] -heigth/2, 0))
-            guide_points.append(pc.point(center[0]+length/2, center[1] -heigth/2, 0))
-            guide_points.append(pc.point(center[0]+length/2, center[1]+heigth/2, 0))
-            guide_points.append(pc.point(center[0]-length/2, center[1]+heigth/2, 0))
-            guide_points.append(pc.point(center[0]-length/2, center[1]-heigth/2, 0))
-
-            for i in range(len(guide_points)-1):
-                start = guide_points[i]
-                end = guide_points[i+1]
+        for i in range(len(guide_points)-1):
+            start = guide_points[i]
+            end = guide_points[i+1]
                 # Calculate the direction vector
-                direction = pc.normalize(pc.vector(start, end))
-                distance = pc.distance(start, end)
-                num_points = int(len(displacement)/4)  # Number of points to generate for the line
-                segment_length = distance / num_points
-                for j in range(0,num_points):
-                    new_point = start + j * segment_length * direction
-                    perpendicular = np.array([-direction[1], direction[0], 0])
-                    points.append(new_point + (perpendicular * displacement[(i*num_points)+j][1]) + (direction * displacement[(i*num_points)+j][0]))
+            direction = pc.normalize(pc.vector(start, end))
+            distance = pc.distance(start, end)
+            num_points = int(len(displacement)/4)  # Number of points to generate for the line
+            segment_length = distance / num_points
+            for j in range(0,num_points):
+                new_point = start + j * segment_length * direction
+                perpendicular = np.array([-direction[1], direction[0], 0])
+                points.append(new_point + (perpendicular * displacement[(i*num_points)+j][1]) + (direction * displacement[(i*num_points)+j][0]))
                     
-                    if i == 0 and j == 0:
-                        start_ = new_point + (perpendicular * displacement[(i*num_points)+j][1]) + (direction * displacement[(i*num_points)+j][0])
-                    
-            points.append(start_)
+        points.append(points[0])  # Close the rectangle by adding the first point again
         # Add the last point to close the rectangle
         return points
     
-    def generate_circle(self,displacement):
+    def generate_circle(self,displacement, cx,cy, index):
         points = []	
         radius_x = self.current_diameter[0] / 2
         radius_y = self.current_diameter[1] / 2
         num_points = len(displacement)  # Number of points to generate for the circle
-        num_centers = len(self.parameters["center_points"])
-
-        for j in range(num_centers):
-            center = self.parameters["center_points"][j] 
-            start = pc.point(0, 0, 0)
-            for i in range(num_points):
-                angle = (2 * np.pi * i) / num_points
-                #angle = 2 * np.pi * i / num_points
-                x = center[0] + radius_x * np.cos(angle)
-                y = center[1] + radius_y * np.sin(angle)
-                new_point = pc.point(x, y, 0)
-                direction = pc.normalize(pc.vector(pc.point(center[0],center[1],0), new_point))
-                perpendicular = np.array([-direction[1], direction[0], 0])
-                points.append(new_point + (direction * displacement[i][1]) + (perpendicular * displacement[i][0]))
-                if i == 0:
-                    start = new_point + (direction * displacement[i][1]) + (perpendicular * displacement[i][0])
-            points.append(start)    
+        if self.current_layer == 0:
+            self.fixed_thetas.append(np.arctan2(-cy, -cx))
+        theta = self.fixed_thetas[index]
+        print("theta: ", theta)
+        
+        for i in range(num_points):
+            angle = theta + ((2 * np.pi * i) / num_points)
+            #angle = 2 * np.pi * i / num_points
+            x = cx + radius_x * np.cos(angle)
+            y = cy + radius_y * np.sin(angle)
+            new_point = pc.point(x, y, 0)
+            direction = pc.normalize(pc.vector(pc.point(cx,cy,0), new_point))
+            perpendicular = np.array([-direction[1], direction[0], 0])
+            points.append(new_point + (direction * displacement[i][1]) + (perpendicular * displacement[i][0]))
+           
+        points.append(points[0])  # Close the circle by adding the first point again
              
         print("points len: ", len(points))
+        return points
+    
+    def generate_triangle(self, displacement, cx, cy, index):
+        points = []
+        # Define the vertices of the triangle
+        vertices = [
+            pc.point(cx, cy + self.current_diameter[1] / 2, 0),  # Top vertex
+            pc.point(cx - self.current_diameter[0] / 2, cy - self.current_diameter[1] / 2, 0),  # Bottom left vertex
+            pc.point(cx + self.current_diameter[0] / 2, cy - self.current_diameter[1] / 2, 0)   # Bottom right vertex
+        ]
+        
+        # Find the index of the vertex closest to the origin
+        closest_idx = min(range(len(vertices)), key=lambda i: vertices[i][0]**2 + vertices[i][1]**2)
+        if self.current_layer == 0:
+            self.fixed_closest_ids.append(closest_idx)
+        closest_idx = self.fixed_closest_ids[index]
+        # Reorder so the closest point is first, and preserve order (wrap around)
+        ordered_vertices = vertices[closest_idx:] + vertices[:closest_idx]
+        # Optionally close the triangle by repeating the first point
+        ordered_vertices.append(ordered_vertices[0])
+        guide_points = ordered_vertices
+        for i in range(len(guide_points)-1):
+            start = guide_points[i]
+            end = guide_points[i+1]
+                # Calculate the direction vector
+            direction = pc.normalize(pc.vector(start, end))
+            distance = pc.distance(start, end)
+            num_points = int(len(displacement)/3)  # Number of points to generate for the line
+            segment_length = distance / num_points
+            for j in range(0,num_points):
+                new_point = start + j * segment_length * direction
+                perpendicular = np.array([-direction[1], direction[0], 0])
+                points.append(new_point + (perpendicular * displacement[(i*num_points)+j][1]) + (direction * displacement[(i*num_points)+j][0]))
+                    
+        points.append(points[0])  # Close the rectangle by adding the first point again
+        # Add the last point to close the rectangle
         return points
     
     def generate_path(self):
@@ -173,15 +216,19 @@ class Shapehandler:
          elif max_diameter < 50:
              scaling_factor = 1
          scaled_spacing = max(int(self.parameters["pattern_spacing"] + scaling_factor),1)
+         print("pattern_range: ", self.parameters["pattern_range"])
+         print("scaled_spacing: ", scaled_spacing)
+         print("pattern_width: ", self.parameters["pattern_width"])
+         print("pattern_height: ", self.parameters["pattern_height"])
 
          multiplicator = 1
          for i in range(resolution):
             x = self.parameters["pattern_width"] * 0.5
-            y = self.parameters["pattern_height"] * 0.5
+            y = self.parameters["pattern_height"] * 0.5 * multiplicator
             if i % scaled_spacing == 0:
                 x = -x
                 multiplicator *= -1
-            goal = (x,y * multiplicator)
+            goal = (x,y)
             if i > self.parameters["pattern_range"]:
                 goal = (0,0)
 
@@ -194,24 +241,25 @@ class Shapehandler:
                 scaled_vector = (vector[0] * 0.5, vector[1] * 0.5)
                 new_displacement = (self.previous_vector[i][0] + scaled_vector[0], self.previous_vector[i][1] + scaled_vector[1])
                 x, y = new_displacement
-                if x < 0.1:
+                if abs(x) < 0.1:
                     x = 0
-                if y < 0.1:
+                if abs(y) < 0.1:
                     y = 0
                 new_displacement = (x, y)
                 displacement.append(new_displacement)
                 self.previous_vector[i] = new_displacement
             
          #print("displacement: ", displacement)
-         print("displacement start: ", displacement[0])
+         print("displacement start: ", displacement[:10])
          return displacement
     
     def generate_next_layer(self,layer):
         # draw the same shape for given number of layers
+        self.current_layer = layer
         if layer % self.parameters["repetitions"] != 0:
-            return self.previous_points
+            return self.previous_shapes
         
-        points = []
+        shapes = []
         displacement = self.generate_path()
         
         # gradually update center points shift
@@ -230,10 +278,20 @@ class Shapehandler:
             self.current_diameter += direction 
             print("current_diameter: ", self.current_diameter)
 
-        if self.parameters["base_shape"] == "rectangle":
-            points = self.generate_rectangle(displacement)
-        elif self.parameters["base_shape"] == "circle":
-            points = self.generate_circle(displacement)
+        
+        for i in range(len(self.parameters["center_points"])):
+            center = self.parameters["center_points"][i]
+            cx = center[0]
+            cy = center[1]
+            points = []
+            if self.parameters["base_shape"] == "rectangle":
+                points = self.generate_rectangle(displacement, cx, cy, i)
+            elif self.parameters["base_shape"] == "circle":
+                points = self.generate_circle(displacement, cx, cy, i)
+            elif self.parameters["base_shape"] == "triangle":
+                points = self.generate_triangle(displacement, cx, cy, i)
+            
+            shapes.append(points)
 
         #appply rotation of layer
         if self.parameters["rotation"] > self.current_rotation:
@@ -243,14 +301,15 @@ class Shapehandler:
         center_of_mass_x = sum(point[0] for point in self.parameters["center_points"]) / len(self.parameters["center_points"])
         center_of_mass_y = sum(point[1] for point in self.parameters["center_points"]) / len(self.parameters["center_points"])
 
-        for i in range(len(points)):
-            points[i] = pc.rotate(points[i],pc.point(center_of_mass_x,center_of_mass_y,0) , self.current_rotation)
+        for i in range(len(shapes)):
+            points = shapes[i]
+            for j in range(len(points)):
+                points[j] = pc.rotate(points[j],pc.point(center_of_mass_x,center_of_mass_y,0) , self.current_rotation)
             
-        self.previous_points = points
-        print("points start: ", points[0])
-        return points
+        self.previous_shapes = shapes
+        return shapes
     
-    def generate_infill(self, points, spacing=10, angle=0):
+    def generate_infill(self, polygon, spacing=10, angle=0):
         """
         Generate a simple linear infill for a given outline.
     
@@ -262,21 +321,9 @@ class Shapehandler:
         Returns:
         list: List of line segments representing the infill.
         """
-        # split the points into seperate polygons
-        polygon = []
-        for i in range(len(points)-1):
-            point = points[i]
-            point_next = points[i+1]
-            distance = pc.distance(point, point_next)
-            p = (point[0], point[1])
-            polygon.append(p)
-            if distance >= 10:  # Example threshold: 10 units
-                break
-        print("polygon len: ", len(polygon))
-        print("points len: ", len(points))
-        #print("polygon: ", polygon)
 
         # Remove duplicate points
+        polygon = [tuple(p) for p in polygon]
         polygon = list(dict.fromkeys(polygon))
         
         # Ensure the polygon is closed
@@ -313,7 +360,7 @@ class Shapehandler:
 
         if len(clipped_lines) > 6:
             clipped_lines = clipped_lines[2:-2]  # Limit to 6 lines
-        elif len(clipped_lines) > 2:
+        elif len(clipped_lines) > 3:
             clipped_lines = clipped_lines[1:-1]
 
         # Convert the clipped lines to a list of points

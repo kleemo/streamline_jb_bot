@@ -45,12 +45,6 @@
 			</div>
 			<div id="options">
 				<div>
-					<div class="options">
-						<h2>Options</h2>
-						<p>Center of the printer plate:</p>
-						<input v-model="plate_center_x">
-						<input style="margin: 0.5rem 0 1rem 0;" v-model="plate_center_y">
-					</div>
 					<div class="slicer">
 						<h4>Slicer</h4>
 						<p>Extrusion Rate: [[ slicer_options.extrusion_rate ]]</p>
@@ -60,21 +54,16 @@
 						<p>Feed Rate: [[ slicer_options.feed_rate ]]</p>
 						<vue-range-slider :tooltip="null" :min="+0" :max="+2000" step="+1" ref="slider"
 							v-model="slicer_options.feed_rate"></vue-range-slider>
-						<p>Layer Height: [[ slicer_options.layer_hight ]]</p>
-						<vue-range-slider :tooltip="null" :min="+0.5" :max="+2.5" step="+0.25" ref="slider"
-							v-model="slicer_options.layer_hight"></vue-range-slider>
+						
 					</div>
 					<div class="slicer">
 						<h4>Layer</h4>
-						<p>Number of repetitions per layer: [[ shape_options.repetitions ]]</p>
+						<p>Layer Repeat: [[ shape_options.repetitions ]]</p>
 						<vue-range-slider :tooltip="null" :min="+1" :max="+3" :step="+1" ref="slider"
 							v-model="shape_options.repetitions"></vue-range-slider>
-						<p>Range to apply line pattern: [[ shape_options.pattern_range ]]</p>
-						<vue-range-slider :tooltip="null" :min="+1" :max="+120" :step="+1" ref="slider"
-							v-model="shape_options.pattern_range"></vue-range-slider>
-						<p>pattern amplitude: [[ shape_options.pattern_amplitude ]]</p>
-						<vue-range-slider :tooltip="null" :min="+1" :max="+100" :step="+1" ref="slider"
-							v-model="shape_options.pattern_amplitude"></vue-range-slider>
+						<p>Layer Height: [[ slicer_options.layer_hight ]]</p>
+						<vue-range-slider :tooltip="null" :min="+0.5" :max="+2.5" step="+0.25" ref="slider"
+							v-model="slicer_options.layer_hight"></vue-range-slider>
 					</div>
 					<h4>Shape</h4>
 					<div class="shape-flex-row">	
@@ -82,12 +71,15 @@
 							<p>base:</p>
 							<div class="center-point-buttons">
     							<button
-        							v-for="n in ['circle', 'rectangle']"
+        							v-for="n in ['circle', 'rectangle', 'triangle']"
         							:key="n"
         							:class="{ selected: shape_options.base_shape === n }"
         							@click="shape_options.base_shape= n"
         							type="button"
-    								>[[ n ]]</button>
+    								><span v-if="n === 'circle'">&#9679;</span>
+        							<span v-else-if="n === 'rectangle'">&#9645;</span>
+        							<span v-else-if="n === 'triangle'">&#9650;</span>
+								</button>
 							</div>
 							<p>filling (spacing between fill lines):</p>
 							<div class="center-point-buttons">
@@ -97,7 +89,11 @@
         							:class="{ selected: shape_options.filling === n }"
         							@click="shape_options.filling = n"
         							type="button"
-    								>[[ n ]]</button>
+    								><span v-if="n === 0">none</span>
+        							<span v-else-if="n === 10">///</span>
+        							<span v-else-if="n === 20">/ / /</span>
+									<span v-else-if="n === 30" style="white-space: pre">/  /  /</span>
+								</button>
 							</div>
 							<p>number of center points:</p>
 							<div class="center-point-buttons">
@@ -119,6 +115,15 @@
 						<div>
 							<canvas id="centerPointsCanvas" width="400" height="400" style="border:1px solid #757575; background-color: #eaeaea;"></canvas>
 						</div>
+					</div>
+					<h4>Line</h4>
+					<div>
+						<p>Range to apply line pattern (at the moment from 1-120): [[ shape_options.pattern_range ]]</p>
+						<vue-range-slider :tooltip="null" :min="+1" :max="+120" :step="+1" ref="slider"
+							v-model="shape_options.pattern_range"></vue-range-slider>
+						<p>Amplitude: [[ shape_options.pattern_amplitude ]]</p>
+						<vue-range-slider :tooltip="null" :min="+1" :max="+100" :step="+1" ref="slider"
+							v-model="shape_options.pattern_amplitude"></vue-range-slider>
 					</div>
 				</div>
 			</div>

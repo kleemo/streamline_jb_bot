@@ -24,6 +24,7 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         lenght: 0,
         polling: null,
         layer: 0,
+        printing: false,
         connected: false,
         port: 'COM3',
         baud: '115200',
@@ -45,12 +46,12 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             pattern_range:60,
             pattern_amplitude: 8,
             num_center_points: 4,
-            growth_directions:[[0,0], [30,10],[40,-20],[-30,20],[-10,-30]],
-            points: [[0,0], [30,10],[40,-20],[-30,20],[-10,-30]],
+            growth_directions:[[-40,50], [40,5],[-40,-30],[-30,20],[-10,-30]],
+            points: [[-40,50], [40,5],[-40,-30],[-30,20],[-10,-30]],
             filling: 0,
         },
         current_shape: {
-            center_points: [[0,0], [30,10],[40,-20],[-30,20],[-10,-30]],
+            center_points: [[-40,50], [40,5],[-40,-30],[-30,20],[-10,-30]],
             diameter_x: 60,
             diameter_y: 60,
         },
@@ -161,6 +162,12 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             // Update growth direction relative to center point
             this.shape_options.growth_directions[i][0] = (mouseX - cx - this.dragOffset.x)/2;
             this.shape_options.growth_directions[i][1] = (mouseY - cy - this.dragOffset.y)/2;
+            if (!this.printing) {
+                // Update starting location of center points only when not printing
+                console.log("Updating center points for growth direction index: " + i);
+                this.shape_options.points[i][0] = this.shape_options.growth_directions[i];
+                this.current_shape.center_points[i] = this.shape_options.growth_directions[i];
+            }
             this.drawCenterPoints();
         },
         onCanvasMouseUp: function(e) {
@@ -175,7 +182,7 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+            this.draw_grid(ctx);
             const points = this.shape_options.points;
             const num_points = this.shape_options.num_center_points;
             const rx = this.shape_options.diameter_x / 2;
@@ -195,9 +202,15 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             if (this.shape_options.base_shape === "rectangle") {
             // Draw rectangle centered at (cx, cy)
                 ctx.rect(cx - rx * 2, cy - ry * 2, rx * 4, ry * 4);
-            } else {
+            } else if (this.shape_options.base_shape === "circle") {
             // Draw ellipse
                 ctx.ellipse(cx, cy, rx * 2, ry * 2, 0, 0, 2 * Math.PI);
+            } else if (this.shape_options.base_shape === "triangle") {
+            // Draw triangle centered at (cx, cy)
+                ctx.moveTo(cx, cy - ry * 2); // Top vertex
+                ctx.lineTo(cx - rx * 2, cy + ry * 2); // Bottom left vertex
+                ctx.lineTo(cx + rx * 2, cy + ry * 2); // Bottom right vertex
+                ctx.closePath();
             }
             ctx.strokeStyle = "#000000";
             ctx.lineWidth = 2;
@@ -209,9 +222,15 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             if (this.shape_options.base_shape === "rectangle" && this.layer > 0) {
             // Draw rectangle centered at (cx, cy)
                 ctx.rect(cx - crx * 2, cy - cry * 2, crx * 4, cry * 4);
-            } else if (this.layer > 0) {
+            } else if (this.layer > 0 && this.shape_options.base_shape === "circle") {
             // Draw ellipse
                 ctx.ellipse(cx, cy, crx * 2, cry * 2, 0, 0, 2 * Math.PI);
+            } else if (this.shape_options.base_shape === "triangle" && this.layer > 0) {
+            // Draw triangle centered at (cx, cy)
+                ctx.moveTo(cx, cy - cry * 2); // Top vertex
+                ctx.lineTo(cx - crx * 2, cy + cry * 2); // Bottom left vertex
+                ctx.lineTo(cx + crx * 2, cy + cry * 2); // Bottom right vertex
+                ctx.closePath();
             }
             ctx.strokeStyle = "#757575";
             ctx.lineWidth = 2;
@@ -236,6 +255,30 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             ctx.lineWidth = 2;
             ctx.stroke();
             }
+        },
+        draw_grid: function (ctx) {
+            const canvas = ctx.canvas;
+            ctx.save();
+            ctx.strokeStyle = "pink";
+            ctx.lineWidth = 1;
+
+            // Draw vertical lines
+            for (let x = 0; x <= canvas.width; x += 20) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+
+            // Draw horizontal lines
+            for (let y = 0; y <= canvas.height; y += 20) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            ctx.restore();
+
         },
         move_up: function (event) {
             socket.emit('move_up');
