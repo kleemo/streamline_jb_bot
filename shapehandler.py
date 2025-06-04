@@ -8,7 +8,7 @@ Description: is responsible to deal with the creation and adaption of the shapes
 import point_calc as pc
 import numpy as np
 from shapely.geometry import Polygon, LineString
-LINE_CONST = 5
+LINE_CONST = 8
 
 class Shapehandler:
     def __init__(self):
@@ -41,7 +41,7 @@ class Shapehandler:
             "amplitude": 1,
             "frequency":1,
             "spacing":1,
-            "resolution":150,
+            "resolution":240,
             "guides":{
                 "tri": [[-1, -0.5,0], [0, 0.5,0], [0, 0.5,0],[1, -0.5,0]],
                 "rect": [[-0.5, -0.5,0], [-0.5, 0.5,0], [0.5, 0.5,0],[0.5, -0.5,0]],
@@ -105,7 +105,7 @@ class Shapehandler:
             self.current_diameter = self.parameters["diameter"]
         perimeter = self.current_diameter[0]*2 + self.current_diameter[1]*2
         if self.parameters["base_shape"] == "circle":
-            perimeter = self.line_options["spacing"] = 2*np.pi*(np.sqrt(((self.current_diameter[0]/2)**2 + (self.current_diameter[1]/2)**2)/2))
+            perimeter = 2*np.pi*(np.sqrt(((self.current_diameter[0]/2)**2 + (self.current_diameter[1]/2)**2)/2))
         if self.parameters["base_shape"] == "triangle":
             perimeter = self.current_diameter[0] + 2*(np.sqrt(self.current_diameter[1]**2 + (self.current_diameter[0]/2)**2))
         self.line_options["spacing"] = perimeter/(self.line_options["resolution"] -1)
@@ -142,14 +142,20 @@ class Shapehandler:
             end = guide_points[i+1]
                 # Calculate the direction vector
             direction = pc.normalize(pc.vector(start, end))
+            perpendicular = np.array([-direction[1], direction[0], 0])
             distance = pc.distance(start, end)
             num_points = int(len(displacement)/4)  # Number of points to generate for the line
             segment_length = distance / num_points
             new_point = start
             for j in range(0,num_points):
-                new_point = start + j * segment_length * direction
-                perpendicular = np.array([-direction[1], direction[0], 0])
-                points.append(new_point + (perpendicular * displacement[(i*num_points)+j][1]) + (direction * displacement[(i*num_points)+j][0]))
+                jdx = (i*num_points) + j
+                new_point = start + j * segment_length * direction  # Point along the outline
+                patterned_point = (
+                    new_point
+                    + direction * displacement[jdx][0]      # Tangential offset
+                    + perpendicular * displacement[jdx][1]  # Normal offset
+                    )
+                points.append(patterned_point)
                     
         points.append(points[0])  # Close the rectangle by adding the first point again
         # Add the last point to close the rectangle
@@ -166,7 +172,7 @@ class Shapehandler:
         
         angle = theta
         for i in range(num_points):
-            angle = theta + ((2 * np.pi * i) / num_points)
+            angle = theta +(np.pi*2- ((2 * np.pi * i) / num_points))
             #angle = 2 * np.pi * i / num_points
             x = cx + radius_x * np.cos(angle)
             y = cy + radius_y * np.sin(angle)
@@ -218,16 +224,15 @@ class Shapehandler:
     
     def generate_loop(self,num_points, width, height):
         points = []
-        for i in range(num_points-1):
-            angle =  (2 * np.pi * i) / (num_points-1)
-            x = width* np.cos(angle)
+        for i in range(num_points):
+            angle =  2*np.pi - ((2 * np.pi * i) / num_points)
+            x = height* np.cos(angle)
             y = height* np.sin(angle)
             points.append([x,y])
-        points.append(points[0])
         return points
     def generate_stairs(self,num_points, width, height):
         points = []
-        corner_points = [[-width,height/2],[0,height/2],[0,-height/2],[width,-height/2],[width,height/2]]
+        corner_points = [[-1,-height/2],[0,-height/2],[0,-height/2],[0,-height/2],[-1,height/2],[0,height/2],[0,height/2],[0,height/2]]
         gidx = -1
         for i in range(num_points):
             if i % (num_points/LINE_CONST) == 0:
@@ -236,12 +241,12 @@ class Shapehandler:
         return points
     def generate_zigzag(self,num_points,width,height):
         points = []
-        corner_points = [[-width,height/2],[-width/2,0],[0,-height/2],[width/2,0],[width,height/2]]
-        gidx = -1
+        half = num_points/2
         for i in range(num_points):
-            if i % (num_points/LINE_CONST) == 0:
-                gidx = gidx + 1
-            points.append(corner_points[gidx])
+            if i < half:
+                points.append([0,-height/2 + height *((i+1)*(1/half))])
+            else:
+                points.append([0,height/2 - height *((i+1-half)*(1/half))])
         return points
     
     def generate_path(self):
@@ -252,13 +257,14 @@ class Shapehandler:
          h = self.line_options["amplitude"]
          pattern = self.line_options["pattern"]
          aplication_range = self.map_parameter_to_range(self.parameters["pattern_range"],0,resolution,0,100)
-         previous_goal = (0,0)
          guides = []
+         x_offset = -1
          for i in range(resolution):
             idx = i
             bundle_size = LINE_CONST*self.line_options["frequency"]
-            x_offset = (bundle_size-1)/2 - (i%bundle_size)
+            #x_offset = (bundle_size-1)/2 - (i%bundle_size)
             if i%bundle_size == 0:
+                x_offset += 1
                 if pattern == "circ":
                     guides = self.generate_loop(bundle_size,w,h/2)
                 if pattern == "rect":
@@ -269,8 +275,8 @@ class Shapehandler:
             if idx > aplication_range or pattern == "str":
                 goal = (0,0)
             else:
-                x = x_offset + guides[i%bundle_size][0]
-                y = guides[i%bundle_size][1]
+                x = guides[i%bundle_size][0] 
+                y = guides[i%bundle_size][1] 
                 goal = (x,y)
 
             if len(self.previous_vector) < resolution:
