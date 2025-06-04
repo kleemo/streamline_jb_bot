@@ -64,10 +64,19 @@
 						<p>Layer Height: [[ slicer_options.layer_hight ]]</p>
 						<vue-range-slider :tooltip="null" :min="+0.5" :max="+2.5" step="+0.25" ref="slider"
 							v-model="slicer_options.layer_hight"></vue-range-slider>
+						<p>Update rate (new parameters get set every [[ slicer_options.update_rate ]] layer)</p>
+						<vue-range-slider :tooltip="null" :min="+1" :max="+6" :step="+1" ref="slider"
+							v-model="slicer_options.update_rate"></vue-range-slider>
+						<p>layer rotation: [[ shape_options.rotation ]]</p>
+						<vue-range-slider :tooltip="null" :min="+0" :max="+1" :step="+0.1" ref="slider"
+							v-model="shape_options.rotation"></vue-range-slider>
 					</div>
 					<h4>Shape</h4>
 					<div class="shape-flex-row">	
 						<div>
+							<p>Transition rate (for directionality and diameter): [[ shape_options.transition_rate ]]</p>
+							<vue-range-slider :tooltip="null" :min="+0.5" :max="+2" :step="+0.1" ref="slider"
+							v-model="shape_options.transition_rate"></vue-range-slider>
 							<p>base:</p>
 							<div class="center-point-buttons">
     							<button
@@ -111,19 +120,52 @@
 							<p>y-diameter: [[ shape_options.diameter_y ]]</p>
 								<vue-range-slider :tooltip="null" :min="+1" :max="+300" :step="+1" ref="slider"
 								v-model="shape_options.diameter_y"></vue-range-slider>
+							<p>Range to apply line pattern (in %): [[ shape_options.pattern_range ]]</p>
+								<vue-range-slider :tooltip="null" :min="+0" :max="+100" :step="+1" ref="slider"
+								v-model="shape_options.pattern_range"></vue-range-slider>
 						</div>
 						<div>
-							<canvas id="centerPointsCanvas" width="400" height="400" style="border:1px solid #757575; background-color: #eaeaea;"></canvas>
+							<canvas id="centerPointsCanvas" width="400" height="400" style="border:1px solid #757575; background-color: #969494;"></canvas>
 						</div>
 					</div>
 					<h4>Line</h4>
 					<div>
-						<p>Range to apply line pattern (at the moment from 1-120): [[ shape_options.pattern_range ]]</p>
-						<vue-range-slider :tooltip="null" :min="+1" :max="+120" :step="+1" ref="slider"
-							v-model="shape_options.pattern_range"></vue-range-slider>
-						<p>Amplitude: [[ shape_options.pattern_amplitude ]]</p>
-						<vue-range-slider :tooltip="null" :min="+1" :max="+100" :step="+1" ref="slider"
-							v-model="shape_options.pattern_amplitude"></vue-range-slider>
+						<canvas id="linePreviewCanvas" width="600" height="140" style="border:1px solid #757575; background-color: #eaeaea;"></canvas>
+						<p>Transition rate (for line pattern): [[ line_options.transition_rate ]]</p>
+						<vue-range-slider :tooltip="null" :min="+0.2" :max="+1" :step="+0.1" ref="slider"
+							v-model="line_options.transition_rate"></vue-range-slider>
+						<p>Pattern type:</p>
+						<div class="center-point-buttons">
+    							<button
+        							v-for="n in ['tri', 'rect', 'circ', 'str']"
+        							:key="n"
+        							:class="{ selected: line_options.pattern === n }"
+        							@click="line_options.pattern= n"
+        							type="button"
+    								><span v-if="n === 'tri'">/\/\/\</span>
+        							<span v-else-if="n === 'rect'">|_|</span>
+        							<span v-else-if="n === 'circ'">OOO</span>
+									<span v-else-if="n === 'str'">---</span>
+								</button>
+						</div>
+						<p>Amplitude: [[ line_options.amplitude ]]</p>
+						<vue-range-slider :tooltip="null" :min="+1" :max="+40" :step="+1" ref="slider"
+							v-model="line_options.amplitude"></vue-range-slider>
+						<p>Frequency:</p>
+						<div class="center-point-buttons">
+    							<button
+        							v-for="n in 4"
+        							:key="n"
+        							:class="{ selected: line_options.frequency === n }"
+        							@click="line_options.frequency= n"
+        							type="button"
+    								><span v-if="n === 1">4</span>
+        							<span v-else-if="n === 2">3</span>
+        							<span v-else-if="n === 3">2</span>
+									<span v-else-if="n === 4">1</span>
+								</button>
+						</div>
+
 					</div>
 				</div>
 			</div>

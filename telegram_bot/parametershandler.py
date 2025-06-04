@@ -20,9 +20,6 @@ class ParametersHandler():
         self.growth_directions = [(-40,50), (40,5),(-40,-30),(-30,20),(-10,-30)]
         self.center_points = [(-40,50), (40,5),(-40,-30),(-30,20),(-10,-30)]
         self.rotation = 0
-        self.bugs = 0
-        self.pattern_height = 8
-        self.current_pattern_height = 8
         self.pattern_width = 2
         self.pattern_spacing = 2
         self.inactive = False
@@ -30,6 +27,11 @@ class ParametersHandler():
         self.num_center_points = 4
         self.pattern_range = 60
         self.filling = 0
+        self.line_amplitude = 1
+        self.line_frequency = 1
+        self.line_pattern = "rect"
+        self.line_update = 0.5
+        self.shape_update = 1
 
     def set_diameter(self, input_type, input):
         if input_type == "text":
@@ -75,8 +77,6 @@ class ParametersHandler():
         self.growth_direction = ((longitude - ref_lon) * 200, (latiude - ref_lat)*200)
     
     def get_parameters(self):
-        if self.current_pattern_height > 0:
-            self.current_pattern_height = self.pattern_height
         data = {
             "shape": self.shape,
             "base_shape": self.base_shape,
@@ -84,9 +84,6 @@ class ParametersHandler():
             "growth_direction": self.growth_direction,
             "pattern": self.pattern,
             "rotation": self.rotation,
-            "bugs": self.bugs,
-            "pattern_height": self.current_pattern_height,
-            "pattern_width": self.pattern_width,
             "pattern_spacing": self.pattern_spacing,
             "inactive": self.inactive,
             #"feature_vector": self.feature_vector,
@@ -94,8 +91,12 @@ class ParametersHandler():
             "center_points": self.center_points,
             "pattern_range": self.pattern_range,
             "growth_directions": self.growth_directions,
+            "line_amplitude":self.line_amplitude,
+            "line_frequency": self.line_frequency,
+            "line_pattern": self.line_pattern,
+            "line_update":self.line_update,
+            "shape_update":self.shape_update
         }
-        self.bugs = 0
         return data
         
     
@@ -143,17 +144,12 @@ class ParametersHandler():
         except json.JSONDecodeError as e:
             print(f"Error parsing AI response: {e}")
         max_spacing = 7 #480 // max(self.diameter[0], self.diameter[1]) 
-        self.pattern_spacing = max_spacing - int(self.map_parameter_to_range(motivation_score, 0, 6, 0, 1))
-        self.pattern_width = self.map_parameter_to_range(dynamics_score, -4, 4, 0, 1)
+        #self.pattern_spacing = max_spacing - int(self.map_parameter_to_range(motivation_score, 0, 6, 0, 1))
+        #self.pattern_width = self.map_parameter_to_range(dynamics_score, -4, 4, 0, 1)
         # Set number of center points based on the complexity score
         num_center_points = int(self.map_parameter_to_range(complexity_score, 1, 6, 0, 1))
         #if (self.shape == "none" or (self.shape == "circle" and image_url == None) or (self.shape == "rectangle" and image_url != None)):
             #self.num_center_points = num_center_points
-        # set pattern to straight line if the coherence score is low    
-        #if coherence_score < 0.5:
-         #   self.current_pattern_height = 0
-        #else:
-         #   self.current_pattern_height = self.pattern_height
 
         print(f"Scores: Motivation: {motivation_score}, Dynamics: {dynamics_score}, Complexity: {complexity_score}, Coherence: {coherence_score}")      
 

@@ -33,6 +33,7 @@ height = 0
 height_max = 5000
 printing = False
 toggle_state = False
+update_rate = 3
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
@@ -109,10 +110,12 @@ def telegram_webhook():
 def hello():
     print("hello socket")
     emit('layer', { 'layer': layer })
+    global update_rate
     emit('slicer_options', {
         'extrusion_rate': slicer_handler.params['extrusion_rate'],
         'feed_rate': slicer_handler.params['feed_rate'],
         'layer_hight': slicer_handler.params['layer_hight'],
+        'update_rate': update_rate
     })
 
 @socketio.on('slicer_options')
@@ -121,6 +124,8 @@ def slicer_options(data):
     slicer_handler.params['extrusion_rate'] = data["extrusion_rate"]
     slicer_handler.params['feed_rate'] = data["feed_rate"]
     slicer_handler.params['layer_hight'] = data["layer_hight"]
+    global update_rate
+    update_rate = data['update_rate']
 
 
 @socketio.on('layer')
@@ -135,13 +140,28 @@ def shape_options(data):
     shape_handler.parameters['repetitions'] = data["repetitions"]
     parameter_handler.diameter = (data["diameter_x"], data["diameter_y"])
     parameter_handler.pattern_range = data["pattern_range"]
-    parameter_handler.pattern_height = data["pattern_amplitude"]
     parameter_handler.num_center_points = data["num_center_points"]
     parameter_handler.growth_directions = data["growth_directions"]
     parameter_handler.base_shape = data["base_shape"]
     parameter_handler.filling = data["filling"]
     parameter_handler.center_points = data["points"]
+    parameter_handler.shape_update = data["transition_rate"]
+    parameter_handler.rotation = data["rotation"]
+    #if data["filling"] > 0:
+        #shape_handler.update_parameters(parameter_handler.get_parameters())
+        #infill = shape_handler.simulate_infill(spacing = data["filling"])
+        #infill2 = [list(pt) for pt in infill]
+        #emit("visualize_infill",{"infill":infill})
     print("shape_options", data)
+
+@socketio.on('line_options')
+def line_options(data):
+    parameter_handler.line_amplitude = data["amplitude"]
+    parameter_handler.line_frequency = data["frequency"]
+    parameter_handler.line_pattern = data["pattern"]
+    parameter_handler.line_update = data["transition_rate"]
+    print("line_options: ", data)   
+
 
 @socketio.on('printer_connect')
 def printer_connect(port, baud):
@@ -235,9 +255,9 @@ def start_print(data, wobble):
     #print_handler.send(slicer_handler.test_extrusion())
     #print("test extrusion end")
     
-    while parameter_handler.shape == "none":
-        print("waiting for shape")
-        time.sleep(3)
+    #while parameter_handler.shape == "none":
+     #   print("waiting for shape")
+      #  time.sleep(3)
 
     original_points = []
     for point in data:
@@ -260,6 +280,7 @@ def start_print(data, wobble):
     global height
     global height_max
     global chat_activity
+    global update_rate
     
     global shape_handler
     
@@ -267,7 +288,7 @@ def start_print(data, wobble):
     while printing:
 
         #Set Machine Height
-        while(height >= height_max or parameter_handler.shape == "none"):
+        while(height >= height_max ):
             print("loop height = " + str(height))
             time.sleep(2)
             #emit('printer_pause_resume')
@@ -275,7 +296,7 @@ def start_print(data, wobble):
 
 
         # create the shape points
-        if layer % 3 == 0:
+        if layer % update_rate == 0:
             #update parameters every 3 layers
             parameter_handler.handle_inactivity(chat_activity)
             chat_activity = 0
@@ -308,7 +329,7 @@ def start_print(data, wobble):
         emit('layer', {'layer': layer}) #"We are on Layer" – Output
         center_points = [list(pt) for pt in shape_handler.parameters["center_points"]]
         emit('update_current_shape',{'center_points':center_points,'diameter_x': shape_handler.current_diameter[0], 'diameter_y': shape_handler.current_diameter[1]})
-        time.sleep(3)  # Wait 10 seconds for simulation
+        time.sleep(2)  # Wait 10 seconds for simulation
             
             
 

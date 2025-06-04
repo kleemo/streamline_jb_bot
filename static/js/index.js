@@ -19,6 +19,10 @@ socket.on('shape_options', (data) => {
     vm.shape_options = data
 });
 
+socket.on('line_options', (data) => {
+    vm.line_options = data
+});
+
 socket.on('connected', (data) => {
     vm.connected = data.connected
 });
@@ -28,6 +32,11 @@ socket.on('toolpath_type', (data) => {
 });
 socket.on('update_current_shape', (data) => {
     vm.current_shape = data
+});
+socket.on('visualize_infill', (data) => {
+    vm.infill = data["infill"]
+    console.log("infill rec " + vm.infill[0])
+    console.log("infill rec l " + vm.infill.length)
 });
 
 // Listen for the trigger_print event and call the print function

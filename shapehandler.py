@@ -8,6 +8,7 @@ Description: is responsible to deal with the creation and adaption of the shapes
 import point_calc as pc
 import numpy as np
 from shapely.geometry import Polygon, LineString
+LINE_CONST = 5
 
 class Shapehandler:
     def __init__(self):
@@ -19,21 +20,35 @@ class Shapehandler:
         self.fixed_closest_ids = []
         self.current_layer = 0 
         self.parameters = { #new parameters
+            "transition_rate":1,
             "shape": "none",
             "base_shape": "circle",
             "diameter": (0,0),
             "growth_direction": (0, 0),
             "pattern": "none",
-            "pattern_spacing":2, #between 3 and 6
-            "pattern_height":8, #between 2 and 5
             "pattern_width":4, #between 2 and 5
             "rotation": 0,
             "inactive": False,
             "feature_vector": [],
-            "center_points": [(-40,50), (40,5),(-40,-30),(-30,20),(-10,-30)],
+            "center_points": [],
             "growth_directions": [(-40,50), (40,5),(-40,-30),(-30,20),(-10,-30)],
             "repetitions": 1,
             "pattern_range": 60,
+        }
+        self.line_options = {
+            "transition_rate":0.5,
+            "pattern": "rect",
+            "amplitude": 1,
+            "frequency":1,
+            "spacing":1,
+            "resolution":150,
+            "guides":{
+                "tri": [[-1, -0.5,0], [0, 0.5,0], [0, 0.5,0],[1, -0.5,0]],
+                "rect": [[-0.5, -0.5,0], [-0.5, 0.5,0], [0.5, 0.5,0],[0.5, -0.5,0]],
+                "circ": [[0, -0.5,0], [-1, 0,1], [1, 0,1],[0, -0.5,1]],
+                "sin": [[-0.5, 0,1], [-0.5, 0,0], [0.5, 0,1],[0.5, 0,0]],
+                "str": [[0, 0,0], [0, 0,0], [0, 0,0],[0, 0,0]],
+            }
         }
     
     
@@ -77,25 +92,26 @@ class Shapehandler:
         self.parameters["growth_direction"] = data["growth_direction"]
         self.parameters["pattern"] = data["pattern"]
         self.parameters["rotation"] = data["rotation"]
-        self.parameters["pattern_height"] = data["pattern_height"]
-        self.parameters["pattern_width"] = data["pattern_width"]
         self.parameters["inactive"] = data["inactive"]
         self.parameters["pattern_range"] = data["pattern_range"]
         self.parameters["growth_directions"] = data["growth_directions"]
-        self.parameters["center_points"] = data["center_points"]
-        #self.parameters["feature_vector"] = data["feature_vector"]
-        #self.parameters["center_points"] = data["center_points"]
-        self.parameters["pattern_spacing"] = int(data["pattern_spacing"])
+        self.line_options["pattern"] = data["line_pattern"]
+        self.line_options["amplitude"] = data["line_amplitude"]
+        self.line_options["frequency"] = data["line_frequency"]
+        self.line_options["transition_rate"] = data["line_update"]
+        self.parameters["transition_rate"] = data["shape_update"]
         #initialize the current diameter only at the very beginning
         if set(self.current_diameter) == {0}:
             self.current_diameter = self.parameters["diameter"]
-        # scale the pattern intensity with reduced diameter
-        if max(self.current_diameter[0], self.current_diameter[1]) < 25 and self.parameters["pattern_height"] > 6:
-            self.parameters["pattern_height"] = 6
-        if max(self.current_diameter[0], self.current_diameter[1]) < 15 and self.parameters["pattern_height"] > 4:
-            self.parameters["pattern_height"] = 4
+        perimeter = self.current_diameter[0]*2 + self.current_diameter[1]*2
+        if self.parameters["base_shape"] == "circle":
+            perimeter = self.line_options["spacing"] = 2*np.pi*(np.sqrt(((self.current_diameter[0]/2)**2 + (self.current_diameter[1]/2)**2)/2))
+        if self.parameters["base_shape"] == "triangle":
+            perimeter = self.current_diameter[0] + 2*(np.sqrt(self.current_diameter[1]**2 + (self.current_diameter[0]/2)**2))
+        self.line_options["spacing"] = perimeter/(self.line_options["resolution"] -1)
         #reduce number of center points if applicable
-        print("num_center_points: ", data["num_center_points"])
+        if len (self.parameters["center_points"]) == 0:
+            self.parameters["center_points"] = data["center_points"]
         if len(self.parameters["center_points"]) > data["num_center_points"]:
             self.parameters["center_points"] = self.parameters["center_points"][:data["num_center_points"]]
         print("Updated parameters: ", self.parameters)
@@ -129,6 +145,7 @@ class Shapehandler:
             distance = pc.distance(start, end)
             num_points = int(len(displacement)/4)  # Number of points to generate for the line
             segment_length = distance / num_points
+            new_point = start
             for j in range(0,num_points):
                 new_point = start + j * segment_length * direction
                 perpendicular = np.array([-direction[1], direction[0], 0])
@@ -146,8 +163,8 @@ class Shapehandler:
         if self.current_layer == 0:
             self.fixed_thetas.append(np.arctan2(-cy, -cx))
         theta = self.fixed_thetas[index]
-        print("theta: ", theta)
         
+        angle = theta
         for i in range(num_points):
             angle = theta + ((2 * np.pi * i) / num_points)
             #angle = 2 * np.pi * i / num_points
@@ -160,7 +177,6 @@ class Shapehandler:
            
         points.append(points[0])  # Close the circle by adding the first point again
              
-        print("points len: ", len(points))
         return points
     
     def generate_triangle(self, displacement, cx, cy, index):
@@ -190,6 +206,7 @@ class Shapehandler:
             distance = pc.distance(start, end)
             num_points = int(len(displacement)/3)  # Number of points to generate for the line
             segment_length = distance / num_points
+            new_point = start
             for j in range(0,num_points):
                 new_point = start + j * segment_length * direction
                 perpendicular = np.array([-direction[1], direction[0], 0])
@@ -199,58 +216,79 @@ class Shapehandler:
         # Add the last point to close the rectangle
         return points
     
+    def generate_loop(self,num_points, width, height):
+        points = []
+        for i in range(num_points-1):
+            angle =  (2 * np.pi * i) / (num_points-1)
+            x = width* np.cos(angle)
+            y = height* np.sin(angle)
+            points.append([x,y])
+        points.append(points[0])
+        return points
+    def generate_stairs(self,num_points, width, height):
+        points = []
+        corner_points = [[-width,height/2],[0,height/2],[0,-height/2],[width,-height/2],[width,height/2]]
+        gidx = -1
+        for i in range(num_points):
+            if i % (num_points/LINE_CONST) == 0:
+                gidx = gidx + 1
+            points.append(corner_points[gidx])
+        return points
+    def generate_zigzag(self,num_points,width,height):
+        points = []
+        corner_points = [[-width,height/2],[-width/2,0],[0,-height/2],[width/2,0],[width,height/2]]
+        gidx = -1
+        for i in range(num_points):
+            if i % (num_points/LINE_CONST) == 0:
+                gidx = gidx + 1
+            points.append(corner_points[gidx])
+        return points
+    
     def generate_path(self):
          displacement = []
-         resolution = 120
-
-         max_diameter = max(self.current_diameter[0], self.current_diameter[1])
-         scaling_factor = 0
-         if max_diameter < 15:
-             scaling_factor = 5
-         elif max_diameter < 20:
-             scaling_factor = 4
-         elif max_diameter < 30:
-             scaling_factor = 3
-         elif max_diameter < 40:
-             scaling_factor = 2
-         elif max_diameter < 50:
-             scaling_factor = 1
-         scaled_spacing = max(int(self.parameters["pattern_spacing"] + scaling_factor),1)
-         print("pattern_range: ", self.parameters["pattern_range"])
-         print("scaled_spacing: ", scaled_spacing)
-         print("pattern_width: ", self.parameters["pattern_width"])
-         print("pattern_height: ", self.parameters["pattern_height"])
-
-         multiplicator = 1
+         resolution = self.line_options["resolution"]
+         spacing = self.line_options["spacing"]
+         w = spacing * self.line_options["frequency"] * 2
+         h = self.line_options["amplitude"]
+         pattern = self.line_options["pattern"]
+         aplication_range = self.map_parameter_to_range(self.parameters["pattern_range"],0,resolution,0,100)
+         previous_goal = (0,0)
+         guides = []
          for i in range(resolution):
-            x = self.parameters["pattern_width"] * 0.5
-            y = self.parameters["pattern_height"] * 0.5 * multiplicator
-            if i % scaled_spacing == 0:
-                x = -x
-                multiplicator *= -1
-            goal = (x,y)
-            if i > self.parameters["pattern_range"]:
+            idx = i
+            bundle_size = LINE_CONST*self.line_options["frequency"]
+            x_offset = (bundle_size-1)/2 - (i%bundle_size)
+            if i%bundle_size == 0:
+                if pattern == "circ":
+                    guides = self.generate_loop(bundle_size,w,h/2)
+                if pattern == "rect":
+                    guides = self.generate_stairs(bundle_size,w,h)
+                if pattern == "tri":
+                    guides = self.generate_zigzag(bundle_size,w,h)
+            goal = (0,0)
+            if idx > aplication_range or pattern == "str":
                 goal = (0,0)
+            else:
+                x = x_offset + guides[i%bundle_size][0]
+                y = guides[i%bundle_size][1]
+                goal = (x,y)
 
             if len(self.previous_vector) < resolution:
                 displacement.append(goal)
-                self.previous_vector.append(goal)  
+                self.previous_vector.append(goal) 
             else:
-                vector = pc.normalize(pc.vector(np.array(self.previous_vector[i]),np.array(goal)))#(goal[0] - self.previous_vector[i][0], goal[1] - self.previous_vector[i][1])
+                vector = pc.normalize(pc.vector(np.array(self.previous_vector[idx]),np.array(goal)))#(goal[0] - self.previous_vector[i][0], goal[1] - self.previous_vector[i][1])
                 # Multiply the vector by a factor (e.g., 0.1)
-                scaled_vector = (vector[0] * 0.5, vector[1] * 0.5)
-                new_displacement = (self.previous_vector[i][0] + scaled_vector[0], self.previous_vector[i][1] + scaled_vector[1])
+                scaled_vector = (vector[0] * self.line_options["transition_rate"], vector[1] * self.line_options["transition_rate"])
+                new_displacement = (self.previous_vector[idx][0] + scaled_vector[0], self.previous_vector[idx][1] + scaled_vector[1])
                 x, y = new_displacement
-                if abs(x) < 0.1:
+                if abs(x) < self.line_options["transition_rate"]/2:
                     x = 0
-                if abs(y) < 0.1:
+                if abs(y) < self.line_options["transition_rate"]/2:
                     y = 0
                 new_displacement = (x, y)
                 displacement.append(new_displacement)
-                self.previous_vector[i] = new_displacement
-            
-         #print("displacement: ", displacement)
-         print("displacement start: ", displacement[:10])
+                self.previous_vector[idx] = new_displacement
          return displacement
     
     def generate_next_layer(self,layer):
@@ -269,13 +307,13 @@ class Shapehandler:
             if center_distance > 0.05:
                 print("center_distance: ", center_distance)
                 direction = pc.normalize(pc.vector(np.array(center), np.array(self.parameters["growth_directions"][i])))
-                self.parameters["center_points"][i] += (direction * 0.3)
+                self.parameters["center_points"][i] += (direction * self.parameters["transition_rate"])
                 
         # gradually update diameter
         diameter_distance = pc.distance(self.current_diameter,self.parameters["diameter"])
         if diameter_distance > 1:
             direction = pc.normalize(pc.vector(np.array(self.current_diameter), np.array(self.parameters["diameter"])))
-            self.current_diameter += direction 
+            self.current_diameter += (direction * self.parameters["transition_rate"]) 
             print("current_diameter: ", self.current_diameter)
 
         
@@ -294,22 +332,26 @@ class Shapehandler:
             shapes.append(points)
 
         #appply rotation of layer
-        if self.parameters["rotation"] > self.current_rotation:
-            self.current_rotation += 0.5
+        #if self.parameters["rotation"] > self.current_rotation:
+            #self.current_rotation += 0.5
             #apply rotation to pattern line
         # Calculate the average x and y coordinates
+        self.current_rotation += self.parameters["rotation"]
         center_of_mass_x = sum(point[0] for point in self.parameters["center_points"]) / len(self.parameters["center_points"])
         center_of_mass_y = sum(point[1] for point in self.parameters["center_points"]) / len(self.parameters["center_points"])
 
         for i in range(len(shapes)):
             points = shapes[i]
             for j in range(len(points)):
+                r = points[j][2]
+                points[j][2] = float(0)
                 points[j] = pc.rotate(points[j],pc.point(center_of_mass_x,center_of_mass_y,0) , self.current_rotation)
+                points[j][2] = r
             
         self.previous_shapes = shapes
         return shapes
     
-    def generate_infill(self, polygon, spacing=10, angle=0):
+    def generate_infill(self, polygon, spacing=10, angle=0, clip_start = 1, clip_end = 0):
         """
         Generate a simple linear infill for a given outline.
     
@@ -357,11 +399,11 @@ class Shapehandler:
 
         # Filter out empty or invalid lines
         clipped_lines = [line for line in clipped_lines if not line.is_empty]
-
-        if len(clipped_lines) > 6:
-            clipped_lines = clipped_lines[2:-2]  # Limit to 6 lines
-        elif len(clipped_lines) > 3:
-            clipped_lines = clipped_lines[1:-1]
+        print("clip line len ",len(clipped_lines))
+        if len(clipped_lines) > clip_end and clip_end > 0:
+            clipped_lines = clipped_lines[:(-1*clip_end)]  # Limit to 6 lines
+        if len(clipped_lines) > clip_start and clip_start > 0:
+            clipped_lines = clipped_lines[clip_start:]
 
         # Convert the clipped lines to a list of points
         infill_points = []
@@ -376,6 +418,37 @@ class Shapehandler:
         print("infill_points len: ", len(infill_points))
         #print("infill_points: ", infill_points)
         return infill_points
+    
+    def simulate_infill(self, spacing=10, clip_start = 0, clip_end = 0):
+        inflill = []
+        points = self.generate_next_layer(layer=0)[0]
+        print("points len ", len(points))
+        inflill = self.generate_infill(spacing = spacing, clip_end=clip_end, clip_start=clip_start,polygon=points)
+        self.current_rotation = 0
+        self.current_diameter = (0,0)
+        self.previous_vector = []
+        self.previous_shapes = []
+        self.fixed_thetas = []
+        self.fixed_closest_ids = []
+        self.current_layer = 0 
+        self.parameters = { #new parameters
+            "transition_rate":1,
+            "shape": "none",
+            "base_shape": "circle",
+            "diameter": (0,0),
+            "growth_direction": (0, 0),
+            "pattern": "none",
+            "pattern_width":4, #between 2 and 5
+            "rotation": 0,
+            "inactive": False,
+            "feature_vector": [],
+            "center_points": [],
+            "growth_directions": [(-40,50), (40,5),(-40,-30),(-30,20),(-10,-30)],
+            "repetitions": 1,
+            "pattern_range": 60,
+        }
+
+        return inflill
 
     @staticmethod
     def is_inside_ellipse(point, center, radius):
@@ -389,6 +462,25 @@ class Shapehandler:
         return ((x - cx)**2 / rx**2) + ((y - cy)**2 / ry**2) <= 0.99 #add extra tolerance to rounding errors
 
     @staticmethod
+    def map_parameter_to_range(value, min_value, max_value, input_min, input_max):
+        """
+        Maps a value from one range to another.
+        """
+        # Ensure the input range is valid
+        if input_min >= input_max:
+            raise ValueError("Input min must be less than input max")
+        
+        # Ensure the output range is valid
+        if min_value >= max_value:
+            raise ValueError("Output min must be less than output max")
+        
+        # Normalize the value to a 0-1 range based on the input range
+        normalized_value = (value - input_min) / (input_max - input_min)
+        
+        # Map the normalized value to the output range
+        mapped_value = min_value + normalized_value * (max_value - min_value)
+        
+        return mapped_value
     def sort_points_counterclockwise(points, center):
         """
         Sort points in counterclockwise order around a center.

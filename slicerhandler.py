@@ -47,6 +47,7 @@ class Slicerhandler:
             point_next = points[(i + 1) % (len(points))]
             x = point_next[0]
             y = point_next[1]
+            r = point_next[2]
             distance = pc.distance(point, point_next)
             # Check if the distance is below the threshold
             if distance < max_distance:  # Example threshold: 10 units
