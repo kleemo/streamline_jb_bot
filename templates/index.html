@@ -127,10 +127,10 @@
 					</div>
 					<h4>Line</h4>
 					<div>
-						<p>Range to apply line pattern (in %): [[ shape_options.pattern_range ]]</p>
+						<p>Range to apply line pattern (in %): [[ line_options.pattern_range ]]</p>
 								<vue-range-slider :tooltip="null" :min="+0" :max="+100" :step="+1" ref="slider"
-								v-model="shape_options.pattern_range"></vue-range-slider>
-						<canvas id="linePreviewCanvas" width="600" height="140" style="border:1px solid #757575; background-color: #eaeaea;"></canvas>
+								v-model="line_options.pattern_range"></vue-range-slider>
+						<canvas id="linePreviewCanvas" width="600" height="140" style="border:1px solid #757575; background-color: #eaeaea; margin-top: 10px;"></canvas>
 						<p>Transition rate (for line pattern): [[ line_options.transition_rate ]]</p>
 						<vue-range-slider :tooltip="null" :min="+0.2" :max="+1" :step="+0.1" ref="slider"
 							v-model="line_options.transition_rate"></vue-range-slider>
