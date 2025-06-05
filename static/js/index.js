@@ -31,6 +31,9 @@ socket.on('connected', (data) => {
 socket.on('update_current_shape', (data) => {
     vm.current_shape = data
 });
+socket.on('line_preview', (data) => {
+    vm.line_displacement = data["line_displacement"]
+});
 socket.on('visualize_infill', (data) => {
     vm.infill = data["infill"]
     console.log("infill rec " + vm.infill[0])

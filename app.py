@@ -153,6 +153,12 @@ def line_options(data):
     parameter_handler.line_options["pattern"] = data["pattern"]
     parameter_handler.line_options["transition_rate"] = data["transition_rate"]  
     parameter_handler.line_options["pattern_range"] = data["pattern_range"]
+    parameter_handler.line_options["pattern_start"] = data["pattern_start"]
+
+    shape_param, line_param = parameter_handler.get_parameters()
+    shape_handler.update_parameters(shape_param,line_param,0)
+    displacement = [list(pt) for pt in shape_handler.simulate_line_pattern()]
+    emit('line_preview',{'line_displacement':displacement})
     print("line_options: ", data)   
 
 
@@ -290,8 +296,9 @@ def start_print():
             #update parameters every 3 layers
             parameter_handler.handle_inactivity(chat_activity)
             chat_activity = 0
+            
             shape_parameter, line_parameters = parameter_handler.get_parameters()
-            shape_handler.update_parameters(shape_parameter, line_parameters)
+            shape_handler.update_parameters(shape_parameter, line_parameters, layer)
         shapes = shape_handler.generate_next_layer(layer)#shape_handler.simpple_rectangle()#shape_handler.simple_circle()#shape_handler.simpple_rectangle()#shape_handler.generate_next_layer(layer)
 
         # print outline and infill of each shape
@@ -318,8 +325,9 @@ def start_print():
         layer = layer + 1
         height = height + slicer_handler.params['layer_hight']
         emit('layer', {'layer': layer}) #"We are on Layer" – Output
-        center_points = [list(pt) for pt in shape_handler.shape_options["center_points"]]
-        emit('update_current_shape',{'center_points':center_points,'diameter_x': shape_handler.current_diameter[0], 'diameter_y': shape_handler.current_diameter[1]})
+        if layer % update_rate == 0:
+            center_points = [list(pt) for pt in shape_handler.shape_options["center_points"]]
+            emit('update_current_shape',{'center_points':center_points,'diameter_x': shape_handler.current_diameter[0], 'diameter_y': shape_handler.current_diameter[1]})
         time.sleep(2)  # Wait 10 seconds for simulation
             
             

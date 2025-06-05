@@ -27,6 +27,7 @@ class ParametersHandler():
         }
         self.line_options = {
             "pattern_range": 60,
+            "pattern_start":50,
             "transition_rate":0.5,
             "pattern": "rect",
             "amplitude": 1,

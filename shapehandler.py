@@ -30,6 +30,7 @@ class Shapehandler:
         }
         self.line_options = {
             "pattern_range": 60,
+            "pattern_start":50,
             "transition_rate":0.5,
             "pattern": "rect",
             "amplitude": 1,
@@ -38,7 +39,7 @@ class Shapehandler:
         }
 
 
-    def update_parameters(self, shape_parameters, line_parameters):
+    def update_parameters(self, shape_parameters, line_parameters, layer):
         self.shape_options["base_shape"] = shape_parameters["base_shape"]
         self.shape_options["diameter"] = shape_parameters["diameter"]
         self.shape_options["rotation"] = shape_parameters["rotation"]
@@ -50,16 +51,17 @@ class Shapehandler:
         self.line_options["frequency"] = line_parameters["frequency"]
         self.line_options["transition_rate"] = line_parameters["transition_rate"]
         self.line_options["pattern_range"] = line_parameters["pattern_range"]
+        self.line_options["pattern_start"] = line_parameters["pattern_start"]
         
         #initialize the current diameter only at the very beginning
         if set(self.current_diameter) == {0}:
             self.current_diameter = self.shape_options["diameter"]
         #initialize center points 
-        if len (self.shape_options["center_points"]) == 0:
+        if layer == 0:
             self.shape_options["center_points"] = shape_parameters["center_points"]
         #reduce number of center points if applicable
         if len(self.shape_options["center_points"]) > shape_parameters["num_center_points"]:
-            self.shape_options["center_points"] = self.shape_options["center_points"][:shape_parameters["num_center_points"]]
+            self.shape_options["center_points"] = shape_parameters["center_points"] #todo prevent reset of points position depending on the layer update rate
         print("Updated shape_options: ", self.shape_options)
         print("Updated line_options: ", self.line_options)
     
@@ -202,14 +204,12 @@ class Shapehandler:
          h = self.line_options["amplitude"]
          pattern = self.line_options["pattern"]
          aplication_range = self.map_parameter_to_range(self.line_options["pattern_range"],0,resolution,0,100)
+         pattern_start = self.map_parameter_to_range(self.line_options["pattern_start"],0,resolution-1,1,100)
          guides = []
-         x_offset = -1
          for i in range(resolution):
             idx = i
             bundle_size = LINE_CONST*self.line_options["frequency"]
-            #x_offset = (bundle_size-1)/2 - (i%bundle_size)
             if i%bundle_size == 0:
-                x_offset += 1
                 if pattern == "circ":
                     guides = self.generate_loop(bundle_size,h/2)
                 if pattern == "rect":
@@ -217,9 +217,9 @@ class Shapehandler:
                 if pattern == "tri":
                     guides = self.generate_zigzag(bundle_size,h)
             goal = (0,0)
-            if idx > aplication_range or pattern == "str":
+            if pattern == "str":
                 goal = (0,0)
-            else:
+            elif (i >= pattern_start and i < (pattern_start + aplication_range)) or (i < (aplication_range-(resolution - pattern_start))):
                 x = guides[i%bundle_size][0] 
                 y = guides[i%bundle_size][1] 
                 goal = (x,y)
@@ -361,6 +361,36 @@ class Shapehandler:
         #print("infill_points: ", infill_points)
         return infill_points
     
+#functions to draw realistic UI preview 
+
+    def simulate_line_pattern(self):
+         displacement = []
+         resolution = self.line_options["resolution"]
+         h = self.line_options["amplitude"]
+         pattern = self.line_options["pattern"]
+         aplication_range = self.map_parameter_to_range(self.line_options["pattern_range"],0,resolution,0,100)
+         pattern_start = self.map_parameter_to_range(self.line_options["pattern_start"],0,resolution-1,1,100)
+         guides = []
+         for i in range(resolution):
+            bundle_size = LINE_CONST*self.line_options["frequency"]
+            if i%bundle_size == 0:
+                if pattern == "circ":
+                    guides = self.generate_loop(bundle_size,h/2)
+                if pattern == "rect":
+                    guides = self.generate_stairs(bundle_size,h)
+                if pattern == "tri":
+                    guides = self.generate_zigzag(bundle_size,h)
+            goal = (0,0)
+            if pattern == "str":
+                goal = (0,0)
+            elif (i >= pattern_start and i < (pattern_start + aplication_range)) or (i < (aplication_range-(resolution - pattern_start))):
+                x = guides[i%bundle_size][0] 
+                y = guides[i%bundle_size][1] 
+                goal = (x,y)
+
+            displacement.append(goal)
+         return displacement
+    
     def simulate_infill(self, spacing=10, clip_start = 0, clip_end = 0):
         inflill = []
         points = self.generate_next_layer(layer=0)[0]
@@ -369,6 +399,8 @@ class Shapehandler:
         #todo reset to initial state?
 
         return inflill
+    
+#helper functions
 
     @staticmethod
     def map_parameter_to_range(value, min_value, max_value, input_min, input_max):

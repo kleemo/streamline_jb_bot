@@ -107,12 +107,15 @@
 							<p>number of center points:</p>
 							<div class="center-point-buttons">
     							<button
-        							v-for="n in 5"
-        							:key="n"
-        							:class="{ selected: shape_options.num_center_points === n }"
-        							@click="shape_options.num_center_points = n"
-        							type="button"
-    								>[[ n ]]</button>
+									@click="remove_center_point"
+									type="button"
+								>-</button>
+								<span style="margin: 0 1em;">[[ shape_options.num_center_points ]]</span>
+								<button
+									@click="add_center_point"
+									type="button"
+									:disabled="printing"
+								>+</button>
 							</div>
 							<p>x-diameter: [[ shape_options.diameter_x ]]</p>
 								<vue-range-slider :tooltip="null" :min="+1" :max="+300" :step="+1" ref="slider"
@@ -130,7 +133,11 @@
 						<p>Range to apply line pattern (in %): [[ line_options.pattern_range ]]</p>
 								<vue-range-slider :tooltip="null" :min="+0" :max="+100" :step="+1" ref="slider"
 								v-model="line_options.pattern_range"></vue-range-slider>
-						<canvas id="linePreviewCanvas" width="600" height="140" style="border:1px solid #757575; background-color: #eaeaea; margin-top: 10px;"></canvas>
+						<p>Start to apply line pattern (between 1-100): [[ line_options.pattern_start ]]</p>
+								<vue-range-slider :tooltip="null" :min="+1" :max="+100" :step="+1" ref="slider"
+								v-model="line_options.pattern_start"></vue-range-slider>
+						<p>(x-dimension of the line preview might not be accurate depending on perimeter of the shape outline)</p>
+						<canvas id="linePreviewCanvas" height="140" style="border:1px solid #757575; background-color: #eaeaea; margin-top: 10px; width: 100%;"></canvas>
 						<p>Transition rate (for line pattern): [[ line_options.transition_rate ]]</p>
 						<vue-range-slider :tooltip="null" :min="+0.2" :max="+1" :step="+0.1" ref="slider"
 							v-model="line_options.transition_rate"></vue-range-slider>

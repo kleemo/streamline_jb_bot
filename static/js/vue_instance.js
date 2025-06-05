@@ -1,5 +1,6 @@
 var socket = io();
 const FLIP_Y = -1
+const DRAWING_SCALING = 2
 
 const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
     el: '#vm',
@@ -28,39 +29,38 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             base_shape: "circle",
             diameter_x: 60,
             diameter_y: 60,
-            num_center_points: 4,
-            growth_directions:[[-40,50], [40,5],[-40,-30],[-30,20],[-10,-30]],
-            points: [[-40,50], [40,5],[-40,-30],[-30,20],[-10,-30]],
+            num_center_points: 4, //should be same as lenght of points arrays
+            growth_directions:[[-40,50], [40,5],[-40,-30],[-30,20]],
+            points: [[-40,50], [40,5],[-40,-30],[-30,20]],
             filling: 0,
             clip_start:0,
             clip_end:0,
             rotation:0
         },
         current_shape: {
-            center_points: [[-40,50], [40,5],[-40,-30],[-30,20],[-10,-30]],
+            center_points: [[-40,50], [40,5],[-40,-30],[-30,20]],
             diameter_x: 60,
             diameter_y: 60,
         },
         infill: [],
+        line_displacement: [],
         line_options: {
             pattern_range:60,
+            pattern_start:50,
             transition_rate:0.5,
             amplitude: 20,
             frequency: 1,
-            pattern: "rect",
-            guides: {
-                tri: [[-1, -0.5,0], [0, 0.5,0], [0, 0.5,0],[1, -0.5,0]],
-                rect: [[-0.5, -0.5,0], [-0.5, 0.5,0], [0.5, 0.5,0],[0.5, -0.5,0]],
-                circ: [[0, -0.5,0], [-1, 0,1], [1, 0,-1],[0, -0.5,-1]],
-                sin: [[-0.5, 0,1], [-0.5, 0,0], [0.5, 0,1],[0.5, 0,0]],
-                str: [[0, 0,0], [0, 0,0], [0, 0,0],[0, 0,0]],
-            }
+            pattern: "rect"
         },
         draggedGrowthIndex: null,
         selected_index : 0,
         dragOffset: { x: 0, y: 0 },
     },
     mounted() {
+    const canvas_line_preview = document.getElementById('linePreviewCanvas');
+    if (canvas_line_preview){
+        canvas_line_preview.width = canvas_line_preview.offsetWidth;
+    }
     this.drawCenterPoints();
     this.draw_line_preview();
     const canvas = document.getElementById('centerPointsCanvas');
@@ -99,6 +99,9 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             },
             deep: true
         },
+        line_displacement: function(newValue, oldValue){
+            this.draw_line_preview();
+        },
         'shape_options.diameter_x': function(newValue, oldValue) {
             this.drawCenterPoints();
         },
@@ -106,7 +109,6 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             this.drawCenterPoints();
         },
         'shape_options.num_center_points': function(newValue, oldValue) {
-            
             this.drawCenterPoints();
         },
         'shape_options.base_shape': function(newValue, oldValue) {
@@ -128,17 +130,26 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             const centerY = canvas.height / 2;
 
             for (let i = 0; i < num_points; i++) {
-                const direction_x = this.shape_options.growth_directions[i][0]*2;
-                const direction_y = this.shape_options.growth_directions[i][1]*2 * FLIP_Y;
+                const direction_x = this.shape_options.growth_directions[i][0]*DRAWING_SCALING;
+                const direction_y = this.shape_options.growth_directions[i][1]*DRAWING_SCALING * FLIP_Y;
                 const handleX = centerX + direction_x;
                 const handleY = centerY + direction_y;
-            // Check if mouse is near the handle
+            // Check if mouse is near the handle for growth direction
                 if (Math.hypot(mouseX - handleX, mouseY - handleY) < 12) {
                     this.draggedGrowthIndex = i;
-                    this.selected_index = i;
                     this.dragOffset.x = mouseX - handleX;
                     this.dragOffset.y = mouseY - handleY;
-                    return;
+                }
+                const center_x = this.shape_options.points[i][0]*DRAWING_SCALING;
+                const center_y = this.shape_options.points[i][1]*DRAWING_SCALING * FLIP_Y;
+                const handleX_c = centerX + center_x;
+                const handleY_c = centerY + center_y;
+            // Check if mouse is near center point for individual shape selection
+                if (Math.hypot(mouseX - handleX_c, mouseY - handleY_c) < 12) {
+                    if(this.selected_index != i){
+                        this.selected_index = i;
+                        this.drawCenterPoints();
+                    }
                 }
             }
         },
@@ -154,8 +165,8 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             const cy = canvas.height / 2 ;
 
             // Update growth direction relative to center point
-            this.shape_options.growth_directions[i][0] = (mouseX - cx - this.dragOffset.x)/2;
-            this.shape_options.growth_directions[i][1] = (mouseY - cy - this.dragOffset.y)/2*FLIP_Y;
+            this.shape_options.growth_directions[i][0] = (mouseX - cx - this.dragOffset.x)/DRAWING_SCALING;
+            this.shape_options.growth_directions[i][1] = (mouseY - cy - this.dragOffset.y)/DRAWING_SCALING*FLIP_Y;
             if (!this.printing) {
                 // Update starting location of center points only when not printing
                 this.shape_options.points[i][0] = this.shape_options.growth_directions[i];
@@ -176,11 +187,10 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             this.draw_helper(ctx);
             this.draw_grid(ctx);
-            this.draw_infill(ctx);
             const points = this.shape_options.points;
             const num_points = this.shape_options.num_center_points;
-            const rx = this.shape_options.diameter_x / 2;
-            const ry = this.shape_options.diameter_y / 2;
+            const rx = this.shape_options.diameter_x * DRAWING_SCALING/ 2;
+            const ry = this.shape_options.diameter_y * DRAWING_SCALING/ 2;
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
             
@@ -188,102 +198,92 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             if (i <= this.current_shape.center_points.length) {
                 points[i][0] = this.current_shape.center_points[i][0];
                 points[i][1] = this.current_shape.center_points[i][1];
+                
+                const cx = centerX + points[i][0] * DRAWING_SCALING;
+                const cy = centerY + points[i][1] * DRAWING_SCALING*FLIP_Y;
+                // draw outline of ellipse
+                ctx.beginPath();
+                if (this.shape_options.base_shape === "rectangle") {
+                // Draw rectangle centered at (cx, cy)
+                    ctx.rect(cx - rx , cy - ry , rx * 2, ry * 2);
+                } else if (this.shape_options.base_shape === "circle") {
+                // Draw ellipse
+                    ctx.ellipse(cx, cy, rx , ry , 0, 0, 2 * Math.PI);
+                } else if (this.shape_options.base_shape === "triangle") {
+                // Draw triangle centered at (cx, cy)
+                    ctx.moveTo(cx, cy - ry); // Top vertex
+                    ctx.lineTo(cx - rx, cy + ry); // Bottom left vertex
+                    ctx.lineTo(cx + rx, cy + ry); // Bottom right vertex
+                    ctx.closePath();
+                }
+                ctx.strokeStyle = "#000000";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                // draw current diameter
+                const crx = this.current_shape.diameter_x * DRAWING_SCALING/ 2;
+                const cry = this.current_shape.diameter_y * DRAWING_SCALING/ 2;
+                ctx.beginPath();
+                if (this.shape_options.base_shape === "rectangle" && this.layer > 0) {
+                // Draw rectangle centered at (cx, cy)
+                    ctx.rect(cx - crx, cy - cry, crx * 2, cry * 2);
+                } else if (this.layer > 0 && this.shape_options.base_shape === "circle") {
+                // Draw ellipse
+                    ctx.ellipse(cx, cy, crx, cry, 0, 0, 2 * Math.PI);
+                } else if (this.shape_options.base_shape === "triangle" && this.layer > 0) {
+                // Draw triangle centered at (cx, cy)
+                    ctx.moveTo(cx, cy - cry); // Top vertex
+                    ctx.lineTo(cx - crx, cy + cry); // Bottom left vertex
+                    ctx.lineTo(cx + crx, cy + cry); // Bottom right vertex
+                    ctx.closePath();
+                }
+                ctx.strokeStyle = "#757575";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                // Draw the center
+                ctx.beginPath();
+                ctx.arc(cx, cy, 10, 0, 2 * Math.PI); 
+                if (i == this.selected_index){
+                    ctx.fillStyle = "#ff3333";
+                } else {
+                    ctx.fillStyle = "#757575"; 
+                }
+                ctx.fill();
+                //draw growth direction
+                direction_x = this.shape_options.growth_directions[i][0]*DRAWING_SCALING;
+                direction_y = this.shape_options.growth_directions[i][1]*DRAWING_SCALING*FLIP_Y;
+                ctx.beginPath();
+                ctx.arc(centerX + direction_x,  centerY + direction_y, 8, 0, 2 * Math.PI); 
+                ctx.fillStyle = "#000"; 
+                ctx.fill();
+                // Draw arrow line
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(centerX + direction_x, centerY + direction_y);
+                ctx.strokeStyle = "#000";
+                ctx.lineWidth = 2;
+                ctx.stroke();
             }
-            const cx = centerX + points[i][0] * 2;
-            const cy = centerY + points[i][1] * 2*FLIP_Y;
-            // draw outline of ellipse
-            ctx.beginPath();
-            if (this.shape_options.base_shape === "rectangle") {
-            // Draw rectangle centered at (cx, cy)
-                ctx.rect(cx - rx * 2, cy - ry * 2, rx * 4, ry * 4);
-            } else if (this.shape_options.base_shape === "circle") {
-            // Draw ellipse
-                ctx.ellipse(cx, cy, rx * 2, ry * 2, 0, 0, 2 * Math.PI);
-            } else if (this.shape_options.base_shape === "triangle") {
-            // Draw triangle centered at (cx, cy)
-                ctx.moveTo(cx, cy - ry * 2); // Top vertex
-                ctx.lineTo(cx - rx * 2, cy + ry * 2); // Bottom left vertex
-                ctx.lineTo(cx + rx * 2, cy + ry * 2); // Bottom right vertex
-                ctx.closePath();
-            }
-            ctx.strokeStyle = "#000000";
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            // draw current diameter
-            const crx = this.current_shape.diameter_x / 2;
-            const cry = this.current_shape.diameter_y / 2;
-            ctx.beginPath();
-            if (this.shape_options.base_shape === "rectangle" && this.layer > 0) {
-            // Draw rectangle centered at (cx, cy)
-                ctx.rect(cx - crx * 2, cy - cry * 2, crx * 4, cry * 4);
-            } else if (this.layer > 0 && this.shape_options.base_shape === "circle") {
-            // Draw ellipse
-                ctx.ellipse(cx, cy, crx * 2, cry * 2, 0, 0, 2 * Math.PI);
-            } else if (this.shape_options.base_shape === "triangle" && this.layer > 0) {
-            // Draw triangle centered at (cx, cy)
-                ctx.moveTo(cx, cy - cry * 2); // Top vertex
-                ctx.lineTo(cx - crx * 2, cy + cry * 2); // Bottom left vertex
-                ctx.lineTo(cx + crx * 2, cy + cry * 2); // Bottom right vertex
-                ctx.closePath();
-            }
-            ctx.strokeStyle = "#757575";
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            // Draw the center
-            ctx.beginPath();
-            ctx.arc(cx, cy, 10, 0, 2 * Math.PI); 
-            ctx.fillStyle = "#757575"; 
-            ctx.fill();
-            //draw growth direction
-            direction_x = this.shape_options.growth_directions[i][0]*2;
-            direction_y = this.shape_options.growth_directions[i][1]*2*FLIP_Y;
-            ctx.beginPath();
-            ctx.arc(centerX + direction_x,  centerY + direction_y, 8, 0, 2 * Math.PI); 
-            ctx.fillStyle = "#000"; 
-            ctx.fill();
-            // Draw arrow line
-            ctx.beginPath();
-            ctx.moveTo(cx, cy);
-            ctx.lineTo(centerX + direction_x, centerY + direction_y);
-            ctx.strokeStyle = "#000";
-            ctx.lineWidth = 2;
-            ctx.stroke();
             }
         },
         draw_line_preview: function () {
             const canvas = document.getElementById('linePreviewCanvas');
             if (!canvas) return;
+            if (this.line_displacement == []) return;
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             this.draw_grid(ctx);
-            const resolution = 11;
-            guides = this.line_options.guides[this.line_options.pattern];
-            const d = canvas.width / resolution /2;
+            const resolution = this.line_displacement.length;
+            const spacing = canvas.width / resolution
 
             ctx.beginPath();
-            for (let i =0; i < resolution - 1; i++) {
-                if (i % this.line_options.frequency == 0){
-                    var cx = (i+1) * (canvas.width / resolution);
-                    var cy = canvas.height / 2;
-                    for (let j = 0; j < guides.length; j++) {
-                        var x = cx + guides[j][0] * d * this.line_options.frequency;
-                        var y = cy + guides[j][1] * (this.line_options.amplitude*4);
-                        if (j == 0 && i == 0) {
-                            ctx.moveTo(x, y);
-                        } else {
-                            var r = guides[j][2];
-                            if (r == 0) {
-                                ctx.lineTo(x, y);
-                            }else if ( r==1 ) {
-                                ctx.moveTo(cx+d*this.line_options.frequency,cy)
-                                ctx.ellipse(cx,cy,d*this.line_options.frequency,this.line_options.amplitude*2,0,0,Math.PI*2);
-                            }else {
-                                ctx.moveTo(x,y);
-                            }
-                            }
-                    }
+            for (let i =0; i < resolution; i++) {
+                x = i*spacing + this.line_displacement[i][0] * DRAWING_SCALING * 3; //manual adjustment to compensate inacurate spacing
+                y = canvas.height/2 + (this.line_displacement[i][1] * DRAWING_SCALING * FLIP_Y);
+                if (i== 0){
+                    ctx.moveTo(x,y);
+                }else{
+                    ctx.lineTo(x,y);
                 }
-                
             }
 
             ctx.strokeStyle = "#000000";
@@ -298,7 +298,7 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             ctx.lineWidth = 1;
 
             // Draw vertical lines
-            for (let x = 0; x <= canvas.width; x += 20) {
+            for (let x = 0; x <= canvas.width; x += (10*DRAWING_SCALING)) {
                 ctx.beginPath();
                 ctx.moveTo(x, 0);
                 ctx.lineTo(x, canvas.height);
@@ -306,7 +306,7 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             }
 
             // Draw horizontal lines
-            for (let y = 0; y <= canvas.height; y += 20) {
+            for (let y = 0; y <= canvas.height; y += (10*DRAWING_SCALING)) {
                 ctx.beginPath();
                 ctx.moveTo(0, y);
                 ctx.lineTo(canvas.width, y);
@@ -321,16 +321,16 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             ctx.strokeStyle = "blue";
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.moveTo(20, canvas.height - 20);
-            ctx.lineTo(20,canvas.height - 60);
-            ctx.moveTo(20, canvas.height - 20);
-            ctx.lineTo(60,canvas.height - 20);
+            ctx.moveTo(10*DRAWING_SCALING, canvas.height - 10*DRAWING_SCALING);
+            ctx.lineTo(10*DRAWING_SCALING,canvas.height - 30*DRAWING_SCALING);
+            ctx.moveTo(10*DRAWING_SCALING, canvas.height - 10*DRAWING_SCALING);
+            ctx.lineTo(30*DRAWING_SCALING,canvas.height - 10*DRAWING_SCALING);
             ctx.stroke();
             
             ctx.beginPath()
             ctx.lineWidth = 0;
             ctx.fillStyle = "#eaeaea";
-            ctx.ellipse(canvas.width/2,canvas.height/2,200,200,0,0,Math.PI*2);
+            ctx.ellipse(canvas.width/2,canvas.height/2,100*DRAWING_SCALING,100*DRAWING_SCALING,0,0,Math.PI*2); //max printing radius 100mm given by machine model
             ctx.fill()
             
 
@@ -360,6 +360,26 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             
 
             ctx.restore();
+        },
+        remove_center_point: function(event) {
+            prev_value = this.shape_options.num_center_points;
+            this.shape_options.num_center_points = Math.max(1, this.shape_options.num_center_points - 1);
+            if (this.shape_options.num_center_points < prev_value){
+                this.shape_options.points.splice(this.selected_index,1);
+                this.current_shape.center_points.splice(this.selected_index,1);
+                this.shape_options.growth_directions.splice(this.selected_index,1);
+                this.selected_index = 0;
+            }
+            
+        },
+        add_center_point: function(event) {
+            prev_value = this.shape_options.num_center_points;
+            this.shape_options.num_center_points = Math.min(4, this.shape_options.num_center_points + 1);
+            if (this.shape_options.num_center_points > prev_value){
+                this.shape_options.points.push([0,0]);
+                this.current_shape.center_points.push([0,0]);
+                this.shape_options.growth_directions.push([0,0]);
+            }
         },
         move_up: function (event) {
             socket.emit('move_up');
