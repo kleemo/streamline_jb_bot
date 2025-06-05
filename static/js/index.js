@@ -2,12 +2,14 @@ var socket = io();
 
 socket.on('connect', function() {
     socket.emit('hello');
+    socket.emit('shape_options',vm.shape_options);
+    socket.emit('line_options',vm.line_options);
 });
 
 socket.on('layer', (data) => {
     vm.layer = data.layer
 });
-socket.on('start_print', (data) => {
+socket.on('start_print', () => {
     vm.printing = true;
 });
 
@@ -26,10 +28,6 @@ socket.on('line_options', (data) => {
 socket.on('connected', (data) => {
     vm.connected = data.connected
 });
-
-socket.on('toolpath_type', (data) => {
-    vm.toolpath_type = data.toolpath_type
-});
 socket.on('update_current_shape', (data) => {
     vm.current_shape = data
 });
@@ -47,5 +45,3 @@ socket.on('trigger_print', function() {
 socket.on('printer_pause_resume', function() {
     socket.emit('printer_pause_resume');
 });
-
-document.getElementById("event").addEventListener("click", function(){ socket.emit('layer_to_zero'); });

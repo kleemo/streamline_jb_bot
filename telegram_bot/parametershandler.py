@@ -9,29 +9,34 @@ from telegram_bot.handlers import openai_text_embedding, openai_text_scores, ope
 
 class ParametersHandler():
     def __init__(self, pattern):
-        self.pattern = pattern
         self.accumulated_chat = ""
         self.accumulated_user_text = ""
         self.num_input = 0
-        self.shape = "none"
-        self.base_shape = "circle"
-        self.diameter = (60,60)
-        self.growth_direction = (0, 0)
-        self.growth_directions = [(-40,50), (40,5),(-40,-30),(-30,20),(-10,-30)]
-        self.center_points = [(-40,50), (40,5),(-40,-30),(-30,20),(-10,-30)]
-        self.rotation = 0
-        self.pattern_width = 2
-        self.pattern_spacing = 2
         self.inactive = False
         self.feature_vector = []
-        self.num_center_points = 4
-        self.pattern_range = 60
         self.filling = 0
-        self.line_amplitude = 1
-        self.line_frequency = 1
-        self.line_pattern = "rect"
-        self.line_update = 0.5
-        self.shape_update = 1
+        self.shape_options = { 
+            "transition_rate":1,
+            "base_shape": "circle",
+            "diameter": (60,60),
+            "rotation": 0,
+            "center_points": [(-40,50), (40,5),(-40,-30),(-30,20),(-10,-30)],
+            "num_center_points": 4,
+            "growth_directions": [(-40,50), (40,5),(-40,-30),(-30,20),(-10,-30)],
+            "repetitions": 1,
+        }
+        self.line_options = {
+            "pattern_range": 60,
+            "transition_rate":0.5,
+            "pattern": "rect",
+            "amplitude": 1,
+            "frequency":1
+        }
+
+    def get_parameters(self):
+        shape_parameters =  self.shape_options
+        line_parameters = self.line_options
+        return shape_parameters , line_parameters
 
     def set_diameter(self, input_type, input):
         if input_type == "text":
@@ -40,25 +45,25 @@ class ParametersHandler():
             word_density = len(words) / len(input) if len(input) > 0 else 0
             # Map the length of the input to a range between 15 and 60
             input_length = len(input)
-            min_range = self.diameter[0] - 15
-            max_range = self.diameter[0] 
+            min_range = self.shape_options["diameter"][0] - 15
+            max_range = self.shape_options["diameter"][0] 
             mapped_length = self.map_parameter_to_range(input_length, min_range, max_range, 1, 100)
-            min_range = self.diameter[1] - 10
-            max_range = self.diameter[1] 
+            min_range = self.shape_options["diameter"][1] - 10
+            max_range = self.shape_options["diameter"][1] 
             mapped_density = self.map_parameter_to_range(word_density, min_range, max_range, 0, 1)
-            self.diameter = (mapped_length, mapped_density)
+            self.shape_options["diameter"] = (mapped_length, mapped_density)
         if input_type == "image":
             img = imread(input, as_gray=True)
             # Calculate the average brightness (pixel intensity ranges from 0 to 1)
             avg_brightness = np.mean(img)
             median_brightness = np.median(img)
-            min_range = self.diameter[0] - 15
-            max_range = self.diameter[0] 
+            min_range = self.shape_options["diameter"][0] - 15
+            max_range = self.shape_options["diameter"][0] 
             mapped_avg_brightness = self.map_parameter_to_range(avg_brightness, min_range, max_range, 0, 1)
-            min_range = self.diameter[1] - 15
-            max_range = self.diameter[1] 
+            min_range = self.shape_options["diameter"][1] - 15
+            max_range = self.shape_options["diameter"][1] 
             mapped_median_brightness = self.map_parameter_to_range(median_brightness, min_range, max_range, 0, 1)
-            self.diameter = (mapped_avg_brightness, mapped_median_brightness)
+            self.shape_options["diameter"] = (mapped_avg_brightness, mapped_median_brightness)
         if input_type == "voice":
             input_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), input)
             if not os.path.exists(input_path):
@@ -67,37 +72,14 @@ class ParametersHandler():
             y, sr = librosa.load(input_path, sr=None)
             rms = librosa.feature.rms(y=y) # Root Mean Square Energy loudness of the audio
             print("audio loudness: " + str(rms.mean()))
-            self.diameter = (rms.mean() * 800, 30)
+            self.shape_options["diameter"] = (rms.mean() * 800, 30)
 
     def set_growth_direction(self, location):
         latiude = location["latitude"]
         longitude = location["longitude"]
         ref_lat = 47.390846
         ref_lon = 8.511541
-        self.growth_direction = ((longitude - ref_lon) * 200, (latiude - ref_lat)*200)
-    
-    def get_parameters(self):
-        data = {
-            "shape": self.shape,
-            "base_shape": self.base_shape,
-            "diameter": self.diameter,
-            "growth_direction": self.growth_direction,
-            "pattern": self.pattern,
-            "rotation": self.rotation,
-            "pattern_spacing": self.pattern_spacing,
-            "inactive": self.inactive,
-            #"feature_vector": self.feature_vector,
-            "num_center_points": self.num_center_points,
-            "center_points": self.center_points,
-            "pattern_range": self.pattern_range,
-            "growth_directions": self.growth_directions,
-            "line_amplitude":self.line_amplitude,
-            "line_frequency": self.line_frequency,
-            "line_pattern": self.line_pattern,
-            "line_update":self.line_update,
-            "shape_update":self.shape_update
-        }
-        return data
+        #self.growth_direction = ((longitude - ref_lon) * 200, (latiude - ref_lat)*200)
         
     
     def set_pattern_parameters(self, user_text, image_url = None):
@@ -159,7 +141,7 @@ class ParametersHandler():
         increase = self.num_input/layer
         if layer > 2:
             increase *= 15
-        self.rotation += increase
+        #self.rotation += increase
   
     def set_new_epoch(self):
         self.num_input = 0

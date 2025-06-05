@@ -67,9 +67,6 @@ def telegram_webhook():
             ai_response = get_openai_response(text)
             parameter_handler.set_pattern_parameters(text)
             parameter_handler.add_text(text, ai_response)
-            if parameter_handler.shape == "none" or parameter_handler.shape == "circle":
-                parameter_handler.shape = "circle"
-                #parameter_handler.set_diameter("text", text)
             send_message_to_telegram(chat_id, ai_response)
 
         if "photo" in update["message"]:
@@ -80,10 +77,6 @@ def telegram_webhook():
             ai_response = analyze_image_with_openai(image_url)
             parameter_handler.add_text("",ai_response)
             parameter_handler.set_pattern_parameters("/image",image_url= image_url)
-            
-            if parameter_handler.shape == "none" or parameter_handler.shape == "rectangle":
-                parameter_handler.shape = "rectangle"
-                parameter_handler.set_diameter("image", image_url)
 
             send_message_to_telegram(chat_id,f"image description: {ai_response}")
             #send_message_to_telegram(chat_id, f"OpenAI response: {ai_response}")
@@ -137,16 +130,15 @@ def setLayer(data):
 @socketio.on('shape_options')
 def shape_options(data):
     print("shape_options socket")
-    shape_handler.parameters['repetitions'] = data["repetitions"]
-    parameter_handler.diameter = (data["diameter_x"], data["diameter_y"])
-    parameter_handler.pattern_range = data["pattern_range"]
-    parameter_handler.num_center_points = data["num_center_points"]
-    parameter_handler.growth_directions = data["growth_directions"]
-    parameter_handler.base_shape = data["base_shape"]
+    shape_handler.shape_options['repetitions'] = data["repetitions"]
+    parameter_handler.shape_options["diameter"] = (data["diameter_x"], data["diameter_y"])
+    parameter_handler.shape_options["num_center_points"] = data["num_center_points"]
+    parameter_handler.shape_options["growth_directions"] = data["growth_directions"]
+    parameter_handler.shape_options["base_shape"] = data["base_shape"]
     parameter_handler.filling = data["filling"]
-    parameter_handler.center_points = data["points"]
-    parameter_handler.shape_update = data["transition_rate"]
-    parameter_handler.rotation = data["rotation"]
+    parameter_handler.shape_options["center_points"] = data["points"]
+    parameter_handler.shape_options["transition_rate"] = data["transition_rate"]
+    parameter_handler.shape_options["rotation"] = data["rotation"]
     #if data["filling"] > 0:
         #shape_handler.update_parameters(parameter_handler.get_parameters())
         #infill = shape_handler.simulate_infill(spacing = data["filling"])
@@ -156,10 +148,11 @@ def shape_options(data):
 
 @socketio.on('line_options')
 def line_options(data):
-    parameter_handler.line_amplitude = data["amplitude"]
-    parameter_handler.line_frequency = data["frequency"]
-    parameter_handler.line_pattern = data["pattern"]
-    parameter_handler.line_update = data["transition_rate"]
+    parameter_handler.line_options["amplitude"] = data["amplitude"]
+    parameter_handler.line_options["frequency"] = data["frequency"]
+    parameter_handler.line_options["pattern"] = data["pattern"]
+    parameter_handler.line_options["transition_rate"] = data["transition_rate"]  
+    parameter_handler.line_options["pattern_range"] = data["pattern_range"]
     print("line_options: ", data)   
 
 
@@ -240,7 +233,7 @@ def zero_layer():
     print("layer set to O")
 
 @socketio.on('start_print')
-def start_print(data, wobble):
+def start_print():
     print("start_print socket")
     global printing
     global toggle_state
@@ -259,9 +252,6 @@ def start_print(data, wobble):
      #   print("waiting for shape")
       #  time.sleep(3)
 
-    original_points = []
-    for point in data:
-        original_points.append(pc.point(point[0], point[1], 0))
     
     printing = True
     emit('start_print', {'printing': printing})
@@ -300,7 +290,8 @@ def start_print(data, wobble):
             #update parameters every 3 layers
             parameter_handler.handle_inactivity(chat_activity)
             chat_activity = 0
-            shape_handler.update_parameters(parameter_handler.get_parameters())
+            shape_parameter, line_parameters = parameter_handler.get_parameters()
+            shape_handler.update_parameters(shape_parameter, line_parameters)
         shapes = shape_handler.generate_next_layer(layer)#shape_handler.simpple_rectangle()#shape_handler.simple_circle()#shape_handler.simpple_rectangle()#shape_handler.generate_next_layer(layer)
 
         # print outline and infill of each shape
@@ -327,7 +318,7 @@ def start_print(data, wobble):
         layer = layer + 1
         height = height + slicer_handler.params['layer_hight']
         emit('layer', {'layer': layer}) #"We are on Layer" – Output
-        center_points = [list(pt) for pt in shape_handler.parameters["center_points"]]
+        center_points = [list(pt) for pt in shape_handler.shape_options["center_points"]]
         emit('update_current_shape',{'center_points':center_points,'diameter_x': shape_handler.current_diameter[0], 'diameter_y': shape_handler.current_diameter[1]})
         time.sleep(2)  # Wait 10 seconds for simulation
             

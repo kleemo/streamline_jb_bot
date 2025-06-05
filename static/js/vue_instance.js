@@ -8,37 +8,19 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         VueRangeSlider
     },
     data: {
-        eth: {
-            current: 0,
-            last: 0,
-        },
-        // Canvas Magic
-        points: [],
-        draggedElement: null,
-        shapeOpen: true,
-        windowWidth: window.innerWidth,
         // UI elements
         printLable: "Print",
         pauseLable: "Pause",
-        synced_to_bot: false,
-        sentiment: 0,
-        lenght: 0,
-        polling: null,
         layer: 0,
         printing: false,
         connected: false,
         port: 'COM3',
         baud: '115200',
-        log_text: "some random text and even more",
-        value: 1,
         slicer_options: {
             extrusion_rate: 0,
             feed_rate: 0,
             layer_hight: 0.75,
             update_rate: 3,
-        },
-        toolpath_options: {
-            linelength: 50
         },
         shape_options: {
             transition_rate: 1,
@@ -46,7 +28,6 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             base_shape: "circle",
             diameter_x: 60,
             diameter_y: 60,
-            pattern_range:60,
             num_center_points: 4,
             growth_directions:[[-40,50], [40,5],[-40,-30],[-30,20],[-10,-30]],
             points: [[-40,50], [40,5],[-40,-30],[-30,20],[-10,-30]],
@@ -62,6 +43,7 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         },
         infill: [],
         line_options: {
+            pattern_range:60,
             transition_rate:0.5,
             amplitude: 20,
             frequency: 1,
@@ -74,9 +56,6 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
                 str: [[0, 0,0], [0, 0,0], [0, 0,0],[0, 0,0]],
             }
         },
-        toolpath_type: "straight",
-        plate_center_x: 100,
-        plate_center_y: 100,
         draggedGrowthIndex: null,
         selected_index : 0,
         dragOffset: { x: 0, y: 0 },
@@ -135,21 +114,6 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         },
         toolpath_type: function (newValue, oldValue) {
             socket.emit('toolpath_type', {'toolpath_type': newValue});
-        },
-    },
-    computed: { 
-        isPrinting: function () {
-          return this.polling != null
-        },
-        stringPoints: function () {
-            output = "";
-            this.points.forEach(function (point, index) {
-                output = output + point[0] + "," + point[1] + " ";
-            });
-            return output;
-        },
-        svgFactor: function () {
-            return 150 / this.windowWidth;
         },
     },
     methods: {
@@ -414,18 +378,7 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             socket.emit('printer_setup');
         },
         print: function(event) {
-            // send the points and append the first one if the shape is closed
-            var print_points = [] // = this.points.slice();
-            // bring all points to 0,0
-            for (const element of this.points) {
-                print_points.push([element[0] - 75 + parseInt(this.plate_center_x), element[1] - 75 + parseInt(this.plate_center_y)])
-            }
-            console.log(print_points);
-            if (!this.shapeOpen) {
-                var last_point =  print_points[0];
-                print_points = print_points.concat([last_point]);
-            }
-            socket.emit('start_print', print_points, 0);
+            socket.emit('start_print');
             if (this.printLable == "Print") {
                 this.printLable = "Home / Park"
             } else {
