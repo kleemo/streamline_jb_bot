@@ -137,14 +137,14 @@
 								<vue-range-slider :tooltip="null" :min="+1" :max="+100" :step="+1" ref="slider"
 								v-model="line_options.pattern_start"></vue-range-slider>
 						<p>(x-dimension of the line preview might not be accurate depending on perimeter of the shape outline)</p>
-						<canvas id="linePreviewCanvas" height="140" style="border:1px solid #757575; background-color: #eaeaea; margin-top: 10px; width: 100%;"></canvas>
+						<canvas id="linePreviewCanvas" height="140" width="700" style="border:1px solid #757575; background-color: #eaeaea; margin-top: 10px; "></canvas>
 						<p>Transition rate (for line pattern): [[ line_options.transition_rate ]]</p>
 						<vue-range-slider :tooltip="null" :min="+0.2" :max="+1" :step="+0.1" ref="slider"
 							v-model="line_options.transition_rate"></vue-range-slider>
 						<p>Pattern type:</p>
 						<div class="center-point-buttons">
     							<button
-        							v-for="n in ['tri', 'rect', 'circ', 'str']"
+        							v-for="n in ['tri', 'rect', 'circ', 'wav', 'str']"
         							:key="n"
         							:class="{ selected: line_options.pattern === n }"
         							@click="line_options.pattern= n"
@@ -152,6 +152,7 @@
     								><span v-if="n === 'tri'">/\/\/\</span>
         							<span v-else-if="n === 'rect'">|_|</span>
         							<span v-else-if="n === 'circ'">OOO</span>
+									<span v-else-if="n === 'wav'">~~~</span>
 									<span v-else-if="n === 'str'">---</span>
 								</button>
 						</div>

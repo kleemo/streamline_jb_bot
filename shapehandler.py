@@ -197,6 +197,14 @@ class Shapehandler:
             else:
                 points.append([0,height/2 - height *((i+1-half)*(1/half))])
         return points
+    def generate_wave(self,num_points,height):
+        points = []
+        for i in range(num_points):
+            angle =  (2 * np.pi * i) / num_points
+            x = 0
+            y = height* np.sin(angle)
+            points.append([x,y])
+        return points
     
     def generate_path(self):
          displacement = []
@@ -216,6 +224,8 @@ class Shapehandler:
                     guides = self.generate_stairs(bundle_size,h)
                 if pattern == "tri":
                     guides = self.generate_zigzag(bundle_size,h)
+                if pattern == "wav":
+                    guides = self.generate_wave(bundle_size,h)
             goal = (0,0)
             if pattern == "str":
                 goal = (0,0)
@@ -380,6 +390,8 @@ class Shapehandler:
                     guides = self.generate_stairs(bundle_size,h)
                 if pattern == "tri":
                     guides = self.generate_zigzag(bundle_size,h)
+                if pattern == "wav":
+                    guides = self.generate_wave(bundle_size,h)
             goal = (0,0)
             if pattern == "str":
                 goal = (0,0)

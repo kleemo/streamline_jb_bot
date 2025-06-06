@@ -57,10 +57,6 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         dragOffset: { x: 0, y: 0 },
     },
     mounted() {
-    const canvas_line_preview = document.getElementById('linePreviewCanvas');
-    if (canvas_line_preview){
-        canvas_line_preview.width = canvas_line_preview.offsetWidth;
-    }
     this.drawCenterPoints();
     this.draw_line_preview();
     const canvas = document.getElementById('centerPointsCanvas');
@@ -277,7 +273,7 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
 
             ctx.beginPath();
             for (let i =0; i < resolution; i++) {
-                x = i*spacing + this.line_displacement[i][0] * DRAWING_SCALING * 3; //manual adjustment to compensate inacurate spacing
+                x = i*spacing + this.line_displacement[i][0] * DRAWING_SCALING * 2; //manual adjustment to compensate inacurate spacing
                 y = canvas.height/2 + (this.line_displacement[i][1] * DRAWING_SCALING * FLIP_Y);
                 if (i== 0){
                     ctx.moveTo(x,y);
