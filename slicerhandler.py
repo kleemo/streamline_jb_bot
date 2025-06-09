@@ -38,7 +38,7 @@ class Slicerhandler:
 
         i = 0
         
-        gcode.append("G1 Z" + str(height + 49.5 )) #+ self.params['layer_hight'] #3 for printing on the extra plate
+        gcode.append("G1 Z" + str(height + 49.25 )) #+ self.params['layer_hight'] #3 for printing on the extra plate
         gcode.append("G1 X" + str(points[0][0]) + " Y" + str(points[0][1]))
         gcode.append("G92 E0")
         gcode.append("G1 E5 F500")
@@ -69,8 +69,8 @@ class Slicerhandler:
             i += 1
         #add extra path with no extrusion to avoid sharp turn when printing the next shape
         direction = pc.normalize(pc.vector(point,point_next))
-        x = point_next[0]+direction[0]*15
-        y = point_next[1]+direction[1]*15
+        x = point_next[0]+direction[0]*12
+        y = point_next[1]+direction[1]*12
         distance = pc.distance(point_next, pc.point(x,y,0))
         gcode.append(
             "G1 X" + str(x) +

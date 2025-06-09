@@ -13,7 +13,7 @@ LINE_CONST = 8
 class Shapehandler:
     def __init__(self):
         self.current_rotation = 0
-        self.current_diameter = (0,0)
+        self.current_diameter = [0,0]
         self.previous_vector = [] #for line pattern transition
         self.previous_shapes = [] #for layer repeat
         self.fixed_thetas = [] #save optimal starting point on circular shape for printing
@@ -22,7 +22,7 @@ class Shapehandler:
         self.shape_options = { 
             "transition_rate":1,
             "base_shape": "circle",
-            "diameter": (0,0),
+            "diameter": [0,0],
             "rotation": 0,
             "center_points": [],
             "growth_directions": [],
@@ -54,11 +54,10 @@ class Shapehandler:
         self.line_options["pattern_start"] = line_parameters["pattern_start"]
         
         #initialize the current diameter only at the very beginning
-        if set(self.current_diameter) == {0}:
-            self.current_diameter = self.shape_options["diameter"]
         #initialize center points 
         if layer == 0:
             self.shape_options["center_points"] = shape_parameters["center_points"]
+            self.current_diameter = shape_parameters["diameter"]
         #reduce number of center points if applicable
         if len(self.shape_options["center_points"]) > shape_parameters["num_center_points"]:
             self.shape_options["center_points"] = shape_parameters["center_points"] #todo prevent reset of points position depending on the layer update rate
@@ -84,7 +83,8 @@ class Shapehandler:
         ordered_corners = corners[closest_idx:] + corners[:closest_idx]
         # Optionally close the rectangle by repeating the first point
         ordered_corners.append(ordered_corners[0])
-        guide_points = ordered_corners
+        guide_points = corners #todo should be ordered_corners but is not compatible with manual center point removal at the moment
+        guide_points.append(corners[0])
 
         for i in range(len(guide_points)-1):
             start = guide_points[i]
@@ -117,7 +117,7 @@ class Shapehandler:
         num_points = len(displacement)  # Number of points to generate for the circle
         if self.current_layer == 0:
             self.fixed_thetas.append(np.arctan2(-cy, -cx))
-        theta = self.fixed_thetas[index]
+        theta = 0 #self.fixed_thetas[index]
         
         angle = theta
         for i in range(num_points):
@@ -152,7 +152,8 @@ class Shapehandler:
         ordered_vertices = vertices[closest_idx:] + vertices[:closest_idx]
         # Optionally close the triangle by repeating the first point
         ordered_vertices.append(ordered_vertices[0])
-        guide_points = ordered_vertices
+        guide_points = vertices#ordered_vertices
+        guide_points.append(vertices[0])
         for i in range(len(guide_points)-1):
             start = guide_points[i]
             end = guide_points[i+1]
@@ -291,14 +292,14 @@ class Shapehandler:
 
         #apply layer rotation
         self.current_rotation += self.shape_options["rotation"]
-        center_of_mass_x = sum(point[0] for point in self.shape_options["center_points"]) / len(self.shape_options["center_points"])
-        center_of_mass_y = sum(point[1] for point in self.shape_options["center_points"]) / len(self.shape_options["center_points"])
+        #center_of_mass_x = sum(point[0] for point in self.shape_options["center_points"]) / len(self.shape_options["center_points"])
+        #center_of_mass_y = sum(point[1] for point in self.shape_options["center_points"]) / len(self.shape_options["center_points"])
         for i in range(len(shapes)):
             points = shapes[i]
             for j in range(len(points)):
                 r = points[j][2]
                 points[j][2] = float(0)
-                points[j] = pc.rotate(points[j],pc.point(center_of_mass_x,center_of_mass_y,0) , self.current_rotation)
+                points[j] = pc.rotate(points[j],pc.point(self.shape_options["center_points"][i][0],self.shape_options["center_points"][i][1],0) , self.current_rotation)
                 points[j][2] = r
             
         self.previous_shapes = shapes

@@ -17,11 +17,15 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         connected: false,
         port: 'COM3',
         baud: '115200',
+        ai_scores:{
+            motivation_score: 0,
+            complexity_score: 0,
+        },
         slicer_options: {
             extrusion_rate: 0,
             feed_rate: 0,
             layer_hight: 0.75,
-            update_rate: 3,
+            update_rate: 1,
         },
         shape_options: {
             transition_rate: 1,

@@ -13,16 +13,21 @@ socket.on('start_print', () => {
     vm.printing = true;
 });
 
+socket.on('update_ai_scores', (data) => {
+    vm.ai_scores = data
+});
+
 socket.on('slicer_options', (data) => {
     vm.slicer_options = data
 });
 
-socket.on('shape_options', (data) => {
-    vm.shape_options = data
+socket.on('update_shape_options', (data) => {
+    vm.shape_options.diameter_x = data["diameter"][0]
+    vm.shape_options.diameter_y = data["diameter"][1]
 });
-
-socket.on('line_options', (data) => {
-    vm.line_options = data
+socket.on('update_line_options', (data) => {
+    vm.line_options.frequency= data["frequency"]
+    vm.line_options.amplitude = data["amplitude"]
 });
 
 socket.on('connected', (data) => {

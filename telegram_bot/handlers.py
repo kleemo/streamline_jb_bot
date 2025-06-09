@@ -72,26 +72,22 @@ def get_openai_response(user_message): #to improve keep a conversation history p
 # Analyze an image using its URL with OpenAI
 def analyze_image_with_openai(image_url):
     global conversation_history
-    response = client.chat.completions.create(
-    model="gpt-4o",
-    messages=[
-        {
-            "role": "user",
-            "content": [
-                {"type": "text", "text": "What's in this image?"},
+    conversation_history.append({"role": "user", "content":[
+                {"type": "text", "text": "Look at this"},
                 {
                     "type": "image_url",
                     "image_url": {
                         "url": image_url,
                     }
                 },
-            ],
-        }
-    ],
+            ]})
+    response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=conversation_history,
     max_tokens=200,
 )
     ai_response = response.choices[0].message.content
-    conversation_history.append({"role": "user", "content": "I send an image showing: " + ai_response})
+    conversation_history.append({"role": "assistant", "content": ai_response})
     return ai_response
 
 

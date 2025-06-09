@@ -18,7 +18,7 @@ class ParametersHandler():
         self.shape_options = { 
             "transition_rate":1,
             "base_shape": "circle",
-            "diameter": (60,60),
+            "diameter": [60,60],
             "rotation": 0,
             "center_points": [(-40,50), (40,5),(-40,-30),(-30,20),(-10,-30)],
             "num_center_points": 4,
@@ -32,6 +32,10 @@ class ParametersHandler():
             "pattern": "rect",
             "amplitude": 1,
             "frequency":1
+        }
+        self.ai_scores = {
+            "motivation_score": 0,
+            "complexity_score": 0,
         }
 
     def get_parameters(self):
@@ -127,13 +131,14 @@ class ParametersHandler():
         except json.JSONDecodeError as e:
             print(f"Error parsing AI response: {e}")
         max_spacing = 7 #480 // max(self.diameter[0], self.diameter[1]) 
-        #self.pattern_spacing = max_spacing - int(self.map_parameter_to_range(motivation_score, 0, 6, 0, 1))
+        self.line_options["amplitude"] = int(self.map_parameter_to_range(motivation_score, 1, 20, 0, 1))
         #self.pattern_width = self.map_parameter_to_range(dynamics_score, -4, 4, 0, 1)
         # Set number of center points based on the complexity score
-        num_center_points = int(self.map_parameter_to_range(complexity_score, 1, 6, 0, 1))
+        self.line_options["frequency"] = int(4 - int(self.map_parameter_to_range(complexity_score, 0, 3, 0, 1)))
         #if (self.shape == "none" or (self.shape == "circle" and image_url == None) or (self.shape == "rectangle" and image_url != None)):
             #self.num_center_points = num_center_points
-
+        self.ai_scores["motivation_score"] = motivation_score
+        self.ai_scores["complexity_score"] = complexity_score
         print(f"Scores: Motivation: {motivation_score}, Dynamics: {dynamics_score}, Complexity: {complexity_score}, Coherence: {coherence_score}")      
 
     def set_rotation(self, layer):

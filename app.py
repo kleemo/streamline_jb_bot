@@ -33,7 +33,7 @@ height = 0
 height_max = 5000
 printing = False
 toggle_state = False
-update_rate = 3
+update_rate = 1
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
@@ -76,9 +76,10 @@ def telegram_webhook():
             image_url = fetch_file(file_id)
             ai_response = analyze_image_with_openai(image_url)
             parameter_handler.add_text("",ai_response)
-            parameter_handler.set_pattern_parameters("/image",image_url= image_url)
+            #parameter_handler.set_pattern_parameters("/image",image_url= image_url)
+            parameter_handler.set_diameter("image",image_url)
 
-            send_message_to_telegram(chat_id,f"image description: {ai_response}")
+            send_message_to_telegram(chat_id,ai_response)
             #send_message_to_telegram(chat_id, f"OpenAI response: {ai_response}")
 
         if "location" in update["message"]:
@@ -94,6 +95,11 @@ def telegram_webhook():
             voice_file_path = download_file(file_url, "voice.ogg")
             
             send_message_to_telegram(chat_id, f"voice message function not yet impelemented")
+        #send updated parameters to the frontend to show on the interface
+        shape_parameters , line_parameters = parameter_handler.get_parameters()
+        socketio.emit('update_shape_options',shape_parameters)
+        socketio.emit('update_line_options',line_parameters)
+        socketio.emit('update_ai_scores',parameter_handler.ai_scores)
 
         
 
@@ -268,7 +274,7 @@ def start_print():
 
     print_handler.send(slicer_handler.start())
 
-    while (print_handler.is_printing() and parameter_handler.shape == "none"):
+    while (print_handler.is_printing()):
         print("waiting for printer to finish setup")
         time.sleep(1)
 
