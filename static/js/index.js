@@ -41,6 +41,9 @@ socket.on('update_current_shape', (data) => {
 socket.on('line_preview', (data) => {
     vm.line_displacement = data["line_displacement"]
 });
+socket.on('webhook_url', (data) => {
+    vm.webhookUrl = data.url
+});
 socket.on('visualize_infill', (data) => {
     vm.infill = data["infill"]
     console.log("infill rec " + vm.infill[0])

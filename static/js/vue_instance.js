@@ -17,6 +17,7 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         connected: false,
         port: 'COM3',
         baud: '115200',
+        webhookUrl: '',
         ai_scores:{
             motivation_score: 0,
             complexity_score: 0,
@@ -417,6 +418,9 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
                 this.pauseLable = "Pause";
                 console.log("Printer resumed");
             }
+        },
+        exposeWebhook: function(event) {
+            socket.emit('expose_webhook');
         }
     },
 })
