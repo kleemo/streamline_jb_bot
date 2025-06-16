@@ -71,7 +71,7 @@ class Slicerhandler:
         direction = pc.normalize(pc.vector(point,point_next))
         x = point_next[0]+direction[0]*12
         y = point_next[1]+direction[1]*12
-        distance = pc.distance(point_next, pc.point(x,y,0))
+        distance = pc.distance(point_next[:2], [x, y])
         gcode.append(
             "G1 X" + str(x) +
             " Y" + str(y) +

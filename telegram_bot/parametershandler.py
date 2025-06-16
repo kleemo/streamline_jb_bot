@@ -15,6 +15,8 @@ class ParametersHandler():
         self.inactive = False
         self.feature_vector = []
         self.filling = 0
+        self.clip_fill_start = 0
+        self.clip_fill_end = 0
         self.shape_options = { 
             "transition_rate":1,
             "base_shape": "circle",
@@ -36,6 +38,7 @@ class ParametersHandler():
         self.ai_scores = {
             "motivation_score": 0,
             "complexity_score": 0,
+            "coherence_score": 0,
         }
 
     def get_parameters(self):
@@ -132,15 +135,22 @@ class ParametersHandler():
             print(f"Error parsing AI response: {e}")
         max_spacing = 7 #480 // max(self.diameter[0], self.diameter[1]) 
         self.line_options["amplitude"] = int(self.map_parameter_to_range(motivation_score, 1, 20, 0, 1))
-        #self.pattern_width = self.map_parameter_to_range(dynamics_score, -4, 4, 0, 1)
-        # Set number of center points based on the complexity score
         self.line_options["frequency"] = int(4 - int(self.map_parameter_to_range(complexity_score, 0, 3, 0, 1)))
-        #if (self.shape == "none" or (self.shape == "circle" and image_url == None) or (self.shape == "rectangle" and image_url != None)):
-            #self.num_center_points = num_center_points
+        self.line_options["pattern_range"] = int(self.map_parameter_to_range(coherence_score, 0, 50, 0, 1))
+
         self.ai_scores["motivation_score"] = motivation_score
         self.ai_scores["complexity_score"] = complexity_score
+        self.ai_scores["coherence_score"] = coherence_score
         print(f"Scores: Motivation: {motivation_score}, Dynamics: {dynamics_score}, Complexity: {complexity_score}, Coherence: {coherence_score}")      
 
+    def increase_input(self):
+        self.num_input +=1
+        if self.num_input == 99:
+            self.num_input = 0
+        if self.num_input % 5 == 0:
+            self.line_options["pattern_start"] += 5
+            if self.line_options["pattern_start"] > 100:
+                self.line_options["pattern_start"] = 1
     def set_rotation(self, layer):
         if layer <= 0:
             return

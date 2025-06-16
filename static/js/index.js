@@ -28,6 +28,8 @@ socket.on('update_shape_options', (data) => {
 socket.on('update_line_options', (data) => {
     vm.line_options.frequency= data["frequency"]
     vm.line_options.amplitude = data["amplitude"]
+    vm.line_options.pattern_start = data["pattern_start"]
+    vm.line_options.pattern_range = data["pattern_range"]
 });
 
 socket.on('connected', (data) => {

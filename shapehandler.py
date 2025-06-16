@@ -19,6 +19,7 @@ class Shapehandler:
         self.fixed_thetas = [] #save optimal starting point on circular shape for printing
         self.fixed_closest_ids = [] # save optimal starting point on rectangular shapes for printing
         self.current_layer = 0 
+        self.infill_cache = {}  # key: index, value: {'polygon': polygon, 'infill': infill_points}
         self.shape_options = { 
             "transition_rate":1,
             "base_shape": "circle",
@@ -38,6 +39,21 @@ class Shapehandler:
             "resolution":240
         }
 
+    def remove_center_point(self, index, layer):
+        if layer > 0:
+            del self.shape_options["center_points"][index]
+            del self.shape_options["growth_directions"][index]
+             # Remove the infill at the deleted index
+            if index in self.infill_cache:
+                del self.infill_cache[index]
+            # Shift all higher infill_cache keys down by one
+            new_cache = {}
+            for k, v in self.infill_cache.items():
+                if k > index:
+                    new_cache[k - 1] = v
+                elif k < index:
+                    new_cache[k] = v
+            self.infill_cache = new_cache
 
     def update_parameters(self, shape_parameters, line_parameters, layer):
         self.shape_options["base_shape"] = shape_parameters["base_shape"]
@@ -56,11 +72,9 @@ class Shapehandler:
         #initialize the current diameter only at the very beginning
         #initialize center points 
         if layer == 0:
+            print("upadate current diameter")
             self.shape_options["center_points"] = shape_parameters["center_points"]
             self.current_diameter = shape_parameters["diameter"]
-        #reduce number of center points if applicable
-        if len(self.shape_options["center_points"]) > shape_parameters["num_center_points"]:
-            self.shape_options["center_points"] = shape_parameters["center_points"] #todo prevent reset of points position depending on the layer update rate
         print("Updated shape_options: ", self.shape_options)
         print("Updated line_options: ", self.line_options)
     
@@ -268,7 +282,7 @@ class Shapehandler:
             center_distance = pc.distance(center,self.shape_options["growth_directions"][i])
             if center_distance > 0.05:
                 direction = pc.normalize(pc.vector(np.array(center), np.array(self.shape_options["growth_directions"][i])))
-                self.shape_options["center_points"][i] += (direction * self.shape_options["transition_rate"])
+                self.shape_options["center_points"][i] += (direction * 0.4)
                 
         # gradually update diameter
         diameter_distance = pc.distance(self.current_diameter,self.shape_options["diameter"])
@@ -305,7 +319,101 @@ class Shapehandler:
         self.previous_shapes = shapes
         return shapes
     
-    def generate_infill(self, polygon, spacing=10, angle=0, clip_start = 1, clip_end = 0):
+    def generate_infill(self, spacing=10, angle=0, clip_start=0, clip_end=0, index=None):
+        polygon = []
+        
+        cx = self.shape_options["center_points"][index][0]
+        cy = self.shape_options["center_points"][index][1]
+        displacement= [(0, 0)] * self.line_options["resolution"]
+        if self.shape_options["base_shape"] == "rectangle":
+                polygon = self.generate_rectangle(displacement, cx, cy, index)
+        elif self.shape_options["base_shape"] == "circle":
+                polygon = self.generate_circle(displacement, cx, cy, index)
+        elif self.shape_options["base_shape"] == "triangle":
+                polygon = self.generate_triangle(displacement, cx, cy, index)
+        for j in range(len(polygon)):
+                polygon[j] = pc.rotate(polygon[j],pc.point(cx,cy,0) , self.current_rotation)
+        polygon = [tuple(p) for p in polygon]
+        polygon = list(dict.fromkeys(polygon))
+        if polygon[0] != polygon[-1]:
+            polygon.append(polygon[0])
+
+        cache_key = index if index is not None else 'default'
+        cached = self.infill_cache.get(cache_key)
+        if cached:
+            old_polygon = cached['polygon']
+            old_infill = cached['infill']
+            # If the polygon has changed, transform the infill
+            if old_polygon != polygon:
+                # Compute affine transform from old_polygon to new polygon
+                matrix = self.compute_affine_transform(old_polygon, polygon)
+                adjusted_infill = self.apply_affine_transform(old_infill, matrix)
+                self.infill_cache[cache_key] = {'polygon': polygon, 'infill': adjusted_infill}
+                if clip_end > 0:
+                    if len(adjusted_infill) > (clip_start + clip_end):
+                        return adjusted_infill[clip_start:-clip_end]
+                    else:
+                        return []
+                else:
+                    if len(adjusted_infill) > clip_start:
+                        return adjusted_infill[clip_start:]
+                    else:
+                        return []
+            else:
+                print("debuggg : ",len(old_infill))
+                if clip_end > 0:
+                    if len(old_infill) > (clip_start + clip_end):
+                        return old_infill[clip_start:-clip_end]
+                    else:
+                        return []
+                else:
+                    if len(old_infill) > clip_start:
+                        return old_infill[clip_start:]
+                    else:
+                        return []
+
+        # ... your existing infill generation code ...
+        outline_polygon = Polygon(polygon)
+        if not outline_polygon.is_valid:
+            outline_polygon = outline_polygon.buffer(0)
+            if not outline_polygon.is_valid:
+                print("Failed to fix the outline polygon. Skipping infill generation.")
+                return []
+
+        min_x, min_y, max_x, max_y = outline_polygon.bounds
+        infill_lines = []
+        y = min_y
+        while y <= max_y:
+            line = LineString([(min_x, y), (max_x, y)])
+            infill_lines.append(line)
+            y += spacing
+
+        clipped_lines = [line.intersection(outline_polygon) for line in infill_lines]
+        clipped_lines = [line for line in clipped_lines if not line.is_empty]
+
+        infill_points = []
+        for line in clipped_lines:
+            if line.geom_type == 'LineString':
+                for coord in line.coords:
+                    infill_points.append(coord)
+            elif line.geom_type == 'MultiLineString':
+                for segment in line.geoms:
+                    for coord in segment.coords:
+                        infill_points.append(coord)
+
+        self.infill_cache[cache_key] = {'polygon': polygon, 'infill': infill_points}
+        if clip_end > 0:
+            if len(infill_points) > (clip_start + clip_end):
+                return infill_points[clip_start:-clip_end]
+            else:
+                return []
+        else:
+            if len(infill_points) > clip_start:
+                return infill_points[clip_start:]
+            else:
+                return []
+    
+    def old_generate_infill(self, polygon, spacing=10, angle=0, clip_start = 0, clip_end = 0):
         """
         Generate a simple linear infill for a given outline.
     
@@ -435,6 +543,48 @@ class Shapehandler:
         mapped_value = min_value + normalized_value * (max_value - min_value)
         
         return mapped_value
-    
+    @staticmethod
+    def compute_affine_transform(src, dst):
+        """
+        Compute 3D affine transform (rotation, scale, translation) from src to dst.
+        src and dst are (N, 3) arrays of 3D points.
+        Returns a 4x4 transformation matrix.
+        """
+        src = np.array(src)
+        dst = np.array(dst)
+
+        if src.shape[1] != 3 or dst.shape[1] != 3:
+            raise ValueError("Expected 3D points (x, y, z)")
+
+        # Pad with ones for affine computation
+        src_pad = np.hstack([src, np.ones((len(src), 1))])  # (N, 4)
+        # Solve for transformation: src_pad @ matrix ≈ dst
+        matrix, _, _, _ = np.linalg.lstsq(src_pad, dst, rcond=None)  # matrix: (4, 3)
+
+        # Convert to a full 4x4 affine transformation matrix
+        full_matrix = np.eye(4)
+        full_matrix[:3, :] = matrix.T  # (3, 4)
+
+        return full_matrix
+
+       
+    @staticmethod
+    def apply_affine_transform(points, matrix):
+        """
+        Apply a 4x4 affine transformation matrix to a list of (x, y, z) points.
+        """
+        pts = np.array(points)
+        if pts.shape[1] != 3:
+            raise ValueError("Expected 3D points (x, y, z)")
+
+        if matrix.shape != (4, 4):
+            raise ValueError(f"Expected 4x4 transformation matrix, got {matrix.shape}")
+
+        # Add 1s for homogeneous coordinates
+        pts_pad = np.hstack([pts, np.ones((len(pts), 1))])  # (N, 4)
+        transformed = pts_pad @ matrix.T  # (N, 4)
+
+        return transformed[:, :3]  # Drop the homogeneous coordinate
+
 
     

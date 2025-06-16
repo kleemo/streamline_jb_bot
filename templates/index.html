@@ -74,7 +74,7 @@
 					<h4>Shape</h4>
 					<div class="shape-flex-row">	
 						<div>
-							<p>Transition rate (for directionality and diameter): [[ shape_options.transition_rate ]]</p>
+							<p>Transition rate (for diameter only): [[ shape_options.transition_rate ]]</p>
 							<vue-range-slider :tooltip="null" :min="+0.5" :max="+2" :step="+0.1" ref="slider"
 							v-model="shape_options.transition_rate"></vue-range-slider>
 							<p>base:</p>
@@ -103,6 +103,29 @@
         							<span v-else-if="n === 20">/ / /</span>
 									<span v-else-if="n === 30" style="white-space: pre">/  /  /</span>
 								</button>
+							</div>
+							<div style="display: flex; gap: 1em;">
+								<span>clip filling start:</span>
+								<button
+									@click="shape_options.clip_start = Math.max(0, shape_options.clip_start - 1)"
+									type="button"
+								>-</button>
+								<span style="min-width:2em; text-align:center;">[[ shape_options.clip_start ]]</span>
+								<button
+									@click="shape_options.clip_start = Math.min(500, shape_options.clip_start + 1)"
+									type="button"
+								>+</button>
+
+								<span>clip filling end:</span>
+								<button
+									@click="shape_options.clip_end = Math.max(0, shape_options.clip_end - 1)"
+									type="button"
+								>-</button>
+								<span style="min-width:2em; text-align:center;">[[ shape_options.clip_end ]]</span>
+								<button
+									@click="shape_options.clip_end = Math.min(500, shape_options.clip_end + 1)"
+									type="button"
+    							>+</button>
 							</div>
 							<p>number of center points:</p>
 							<div class="center-point-buttons">
@@ -179,6 +202,7 @@
 					<div style="display: flex; gap: 1em;">
 						<p>motivation_score: [[ai_scores.motivation_score]]</p>
     					<p>complexity_score: [[ai_scores.complexity_score]]</p>
+						<p>coherence_score: [[ai_scores.coherence_score]]</p>
 					</div>
 				</div>
 			</div>

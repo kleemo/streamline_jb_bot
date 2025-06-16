@@ -39,7 +39,7 @@ def normalize(v):
 
 def vector(a, b):
     # calculate a vector from two pionts
-    return b - a
+    return np.array(b) - np.array(a)
 
 # Testing functions
 if __name__ == "__main__":

@@ -54,7 +54,7 @@ def telegram_webhook():
     
     if 'message' in update:
         chat_id = update['message']['chat']['id']
-        parameter_handler.num_input += 1
+        parameter_handler.increase_input()
         chat_activity += 1
         parameter_handler.set_rotation(layer)
 
@@ -132,6 +132,10 @@ def setLayer(data):
     print("layer socket")
     global layer
     layer = int(data["layer"])
+@socketio.on('remove_center_point')
+def removeCenterPoint(data):
+    global layer
+    shape_handler.remove_center_point(int(data["index"]),layer)
 
 @socketio.on('shape_options')
 def shape_options(data):
@@ -141,10 +145,13 @@ def shape_options(data):
     parameter_handler.shape_options["num_center_points"] = data["num_center_points"]
     parameter_handler.shape_options["growth_directions"] = data["growth_directions"]
     parameter_handler.shape_options["base_shape"] = data["base_shape"]
-    parameter_handler.filling = data["filling"]
     parameter_handler.shape_options["center_points"] = data["points"]
     parameter_handler.shape_options["transition_rate"] = data["transition_rate"]
     parameter_handler.shape_options["rotation"] = data["rotation"]
+
+    parameter_handler.filling = data["filling"]
+    parameter_handler.clip_fill_start = data["clip_start"]
+    parameter_handler.clip_fill_end = data["clip_end"]
     #if data["filling"] > 0:
         #shape_handler.update_parameters(parameter_handler.get_parameters())
         #infill = shape_handler.simulate_infill(spacing = data["filling"])
@@ -162,7 +169,8 @@ def line_options(data):
     parameter_handler.line_options["pattern_start"] = data["pattern_start"]
 
     shape_param, line_param = parameter_handler.get_parameters()
-    shape_handler.update_parameters(shape_param,line_param,0)
+    global layer
+    shape_handler.update_parameters(shape_param,line_param,layer)
     displacement = [list(pt) for pt in shape_handler.simulate_line_pattern()]
     emit('line_preview',{'line_displacement':displacement})
     print("line_options: ", data)   
@@ -308,7 +316,7 @@ def start_print():
         shapes = shape_handler.generate_next_layer(layer)#shape_handler.simpple_rectangle()#shape_handler.simple_circle()#shape_handler.simpple_rectangle()#shape_handler.generate_next_layer(layer)
 
         # print outline and infill of each shape
-        for points in shapes:
+        for i, points in enumerate(shapes):
             if len(points) > 0:
                 #print outline of the shape
                 gcode = slicer_handler.create(height, points, max_distance=200)
@@ -318,7 +326,7 @@ def start_print():
                     print("print status :",print_handler.status())
                 # generate and print infill of the shapes
                 if parameter_handler.filling > 0:
-                    infill = shape_handler.generate_infill(points, spacing=parameter_handler.filling)
+                    infill = shape_handler.generate_infill(index=i, spacing=parameter_handler.filling, clip_end=parameter_handler.clip_fill_end, clip_start=parameter_handler.clip_fill_start)
                     if len(infill) == 0:
                         print("no infill generated")
                         continue
@@ -334,7 +342,7 @@ def start_print():
         if layer % update_rate == 0:
             center_points = [list(pt) for pt in shape_handler.shape_options["center_points"]]
             emit('update_current_shape',{'center_points':center_points,'diameter_x': shape_handler.current_diameter[0], 'diameter_y': shape_handler.current_diameter[1]})
-        time.sleep(2)  # Wait 10 seconds for simulation
+        time.sleep(1)  # Wait 10 seconds for simulation
             
             
 

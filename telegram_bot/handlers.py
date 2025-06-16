@@ -82,7 +82,7 @@ def analyze_image_with_openai(image_url):
                 },
             ]})
     response = client.chat.completions.create(
-    model="gpt-4o",
+    model="ft:gpt-4o-2024-08-06:streamline:streamline-bot-04-06:BehU07Up",
     messages=conversation_history,
     max_tokens=200,
 )
@@ -104,10 +104,17 @@ def openai_text_embedding(user_msg):
 
 def openai_text_scores(user_msg, chat_history):
     prompt = f"""
-    Given the following user message assign the following three scores, as a float ranging from 0 to 1. : 
-    - Cognitive complexity: Measures analytical vs. intuitive thinking. Factors include; sentence structure, logical connectors, abstract vs. concrete language.
-    - Social/Power dynamics: Assesses assertiveness, politeness, dominance, deference in communication. Factors include; modal verbs ("could, might"), hedging ("I think, maybe"), direct commands.
-    - Intent/Motivational force: Detects persuasion, exploration, activism, storytelling in speech. Factors: call-to-action phrases ("Join us!"), speculative language ("What if?"), certainty markers.
+    You are evaluating a user message on three psychological-linguistic dimensions. For each, assign a float score between 0.0 and 1.0, where:
+
+    - 0.0 = Extremely low
+    - 0.5 = Moderate/neutral
+    - 1.0 = Extremely high
+
+    **Please assess:**
+
+    1. **Cognitive Complexity**: Does the message show abstract, layered, or analytical thought? Look for complex sentence structures, use of logical connectors, abstract terms.
+    2. **Social/Power Dynamics**: Is the speaker assertive, deferential, polite, commanding, or hedging? Consider modal verbs ("could, might"), hedging ("I think, maybe"), or direct language ("Do this now").
+    3. **Intent / Motivational Force**: How strong is the drive or purpose in the message? Are there persuasive tactics, emotional appeals, speculative prompts, or storytelling?
 
     Respond in this format:
         

@@ -20,6 +20,7 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         ai_scores:{
             motivation_score: 0,
             complexity_score: 0,
+            coherence_score: 0,
         },
         slicer_options: {
             extrusion_rate: 0,
@@ -49,8 +50,8 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         infill: [],
         line_displacement: [],
         line_options: {
-            pattern_range:60,
-            pattern_start:50,
+            pattern_range:40,
+            pattern_start:30,
             transition_rate:0.5,
             amplitude: 20,
             frequency: 1,
@@ -368,6 +369,7 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
                 this.shape_options.points.splice(this.selected_index,1);
                 this.current_shape.center_points.splice(this.selected_index,1);
                 this.shape_options.growth_directions.splice(this.selected_index,1);
+                socket.emit("remove_center_point",{index:this.selected_index})
                 this.selected_index = 0;
             }
             
