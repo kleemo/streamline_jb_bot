@@ -176,3 +176,4 @@ torchvision==0.17.1
 typing_extensions==4.10.0
 Werkzeug==2.0.0
 wsproto==1.2.0
+pyngrok==6.1.0

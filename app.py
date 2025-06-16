@@ -13,7 +13,9 @@ import shapehandler
 import slicerhandler
 import point_calc as pc
 
-from telegram_bot.handlers import send_message_to_telegram, fetch_file, get_openai_response, download_file, analyze_image_with_openai
+from telegram_bot.handlers import send_message_to_telegram, fetch_file, get_openai_response, download_file, analyze_image_with_openai, TELEGRAM_API_URL
+from pyngrok import ngrok
+import requests
 import telegram_bot.parametershandler
 welcome_mesage = "Hello and welcome! This isn’t just a chatbot. It’s a guide through an invisible landscape—one that shifts with every thought you share. As we talk, a living shape grows from our conversation.Type anything to begin the journey."
 port = 'COM3' # use this port for Windows
@@ -116,6 +118,19 @@ def hello():
         'layer_hight': slicer_handler.params['layer_hight'],
         'update_rate': update_rate
     })
+
+@socketio.on('expose_webhook')
+def expose_webhook():
+    """Expose Flask server via ngrok and send URL to client."""
+    try:
+        public_url = ngrok.connect(5000).public_url
+        emit('webhook_url', {'url': public_url})
+        try:
+            requests.get(f"{TELEGRAM_API_URL}/setWebhook", params={'url': public_url})
+        except Exception as e:
+            print(f"Failed to set Telegram webhook: {e}")
+    except Exception as e:
+        print(f"ngrok error: {e}")
 
 @socketio.on('slicer_options')
 def slicer_options(data):
