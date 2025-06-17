@@ -221,7 +221,7 @@ class Shapehandler:
             elif (i >= pattern_start and i < (pattern_start + aplication_range)) or (i < (aplication_range-(resolution - pattern_start))):
                 x = guides[i%bundle_size][0] 
                 y = guides[i%bundle_size][1] 
-                goal = (x,y)
+                goal = (x,y + 10)
 
             if len(self.previous_vector) < resolution:
                 displacement.append(goal)
