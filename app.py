@@ -126,7 +126,8 @@ def expose_webhook():
         public_url = ngrok.connect(5000).public_url
         emit('webhook_url', {'url': public_url})
         try:
-            requests.get(f"{TELEGRAM_API_URL}/setWebhook", params={'url': public_url})
+            requests.get(f"{TELEGRAM_API_URL}/deleteWebhook", params={'drop_pending_updates': True})
+            requests.get(f"{TELEGRAM_API_URL}/setWebhook", params={'url': public_url + "/webhook"})
         except Exception as e:
             print(f"Failed to set Telegram webhook: {e}")
     except Exception as e:

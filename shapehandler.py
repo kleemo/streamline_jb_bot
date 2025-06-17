@@ -16,8 +16,6 @@ class Shapehandler:
         self.current_diameter = [0,0]
         self.previous_vector = [] #for line pattern transition
         self.previous_shapes = [] #for layer repeat
-        self.fixed_thetas = [] #save optimal starting point on circular shape for printing
-        self.fixed_closest_ids = [] # save optimal starting point on rectangular shapes for printing
         self.current_layer = 0 
         self.infill_cache = {}  # key: index, value: {'polygon': polygon, 'infill': infill_points}
         self.shape_options = { 
@@ -78,7 +76,7 @@ class Shapehandler:
         print("Updated shape_options: ", self.shape_options)
         print("Updated line_options: ", self.line_options)
     
-    def generate_rectangle(self,displacement, cx, cy, index):
+    def generate_rectangle(self,displacement, cx, cy):
         points = []
         length = self.current_diameter[0]
         heigth = self.current_diameter[1]
@@ -88,16 +86,7 @@ class Shapehandler:
         pc.point(cx+length/2, cy+heigth/2, 0),
         pc.point(cx-length/2, cy+heigth/2, 0)
         ]
-        # Find the index of the corner closest to the origin
-        closest_idx = min(range(len(corners)), key=lambda i: corners[i][0]**2 + corners[i][1]**2)
-        if self.current_layer == 0:
-            self.fixed_closest_ids.append(closest_idx)
-        closest_idx = self.fixed_closest_ids[index]
-        # Reorder so the closest point is first, and preserve order (wrap around)
-        ordered_corners = corners[closest_idx:] + corners[:closest_idx]
-        # Optionally close the rectangle by repeating the first point
-        ordered_corners.append(ordered_corners[0])
-        guide_points = corners #todo should be ordered_corners but is not compatible with manual center point removal at the moment
+        guide_points = corners 
         guide_points.append(corners[0])
 
         for i in range(len(guide_points)-1):
@@ -124,18 +113,13 @@ class Shapehandler:
         # Add the last point to close the rectangle
         return points
     
-    def generate_circle(self,displacement, cx,cy, index):
+    def generate_circle(self,displacement, cx,cy):
         points = []	
         radius_x = self.current_diameter[0] / 2
         radius_y = self.current_diameter[1] / 2
         num_points = len(displacement)  # Number of points to generate for the circle
-        if self.current_layer == 0:
-            self.fixed_thetas.append(np.arctan2(-cy, -cx))
-        theta = 0 #self.fixed_thetas[index]
-        
-        angle = theta
         for i in range(num_points):
-            angle = theta +(np.pi*2- ((2 * np.pi * i) / num_points))
+            angle = np.pi*2- ((2 * np.pi * i) / num_points)
             #angle = 2 * np.pi * i / num_points
             x = cx + radius_x * np.cos(angle)
             y = cy + radius_y * np.sin(angle)
@@ -148,7 +132,7 @@ class Shapehandler:
              
         return points
     
-    def generate_triangle(self, displacement, cx, cy, index):
+    def generate_triangle(self, displacement, cx, cy):
         points = []
         # Define the vertices of the triangle
         vertices = [
@@ -156,16 +140,6 @@ class Shapehandler:
             pc.point(cx - self.current_diameter[0] / 2, cy - self.current_diameter[1] / 2, 0),  # Bottom left vertex
             pc.point(cx + self.current_diameter[0] / 2, cy - self.current_diameter[1] / 2, 0)   # Bottom right vertex
         ]
-        
-        # Find the index of the vertex closest to the origin
-        closest_idx = min(range(len(vertices)), key=lambda i: vertices[i][0]**2 + vertices[i][1]**2)
-        if self.current_layer == 0:
-            self.fixed_closest_ids.append(closest_idx)
-        closest_idx = self.fixed_closest_ids[index]
-        # Reorder so the closest point is first, and preserve order (wrap around)
-        ordered_vertices = vertices[closest_idx:] + vertices[:closest_idx]
-        # Optionally close the triangle by repeating the first point
-        ordered_vertices.append(ordered_vertices[0])
         guide_points = vertices#ordered_vertices
         guide_points.append(vertices[0])
         for i in range(len(guide_points)-1):
@@ -297,11 +271,11 @@ class Shapehandler:
             cy = center[1]
             points = []
             if self.shape_options["base_shape"] == "rectangle":
-                points = self.generate_rectangle(displacement, cx, cy, i)
+                points = self.generate_rectangle(displacement, cx, cy)
             elif self.shape_options["base_shape"] == "circle":
-                points = self.generate_circle(displacement, cx, cy, i)
+                points = self.generate_circle(displacement, cx, cy)
             elif self.shape_options["base_shape"] == "triangle":
-                points = self.generate_triangle(displacement, cx, cy, i)
+                points = self.generate_triangle(displacement, cx, cy)
             shapes.append(points)
 
         #apply layer rotation
@@ -326,11 +300,11 @@ class Shapehandler:
         cy = self.shape_options["center_points"][index][1]
         displacement= [(0, 0)] * self.line_options["resolution"]
         if self.shape_options["base_shape"] == "rectangle":
-                polygon = self.generate_rectangle(displacement, cx, cy, index)
+                polygon = self.generate_rectangle(displacement, cx, cy)
         elif self.shape_options["base_shape"] == "circle":
-                polygon = self.generate_circle(displacement, cx, cy, index)
+                polygon = self.generate_circle(displacement, cx, cy)
         elif self.shape_options["base_shape"] == "triangle":
-                polygon = self.generate_triangle(displacement, cx, cy, index)
+                polygon = self.generate_triangle(displacement, cx, cy)
         for j in range(len(polygon)):
                 polygon[j] = pc.rotate(polygon[j],pc.point(cx,cy,0) , self.current_rotation)
         polygon = [tuple(p) for p in polygon]
@@ -360,7 +334,6 @@ class Shapehandler:
                     else:
                         return []
             else:
-                print("debuggg : ",len(old_infill))
                 if clip_end > 0:
                     if len(old_infill) > (clip_start + clip_end):
                         return old_infill[clip_start:-clip_end]
@@ -394,12 +367,19 @@ class Shapehandler:
         infill_points = []
         for line in clipped_lines:
             if line.geom_type == 'LineString':
-                for coord in line.coords:
-                    infill_points.append(coord)
+                coords = list(line.coords)
+                if len(coords) >= 2:
+                    # Only use endpoints
+                    infill_points.append(np.array(coords[0]))
+                    infill_points.append(np.array(coords[-1]))
             elif line.geom_type == 'MultiLineString':
+                # For MultiLineString, treat all segments as one line by flattening their coordinates
+                all_coords = []
                 for segment in line.geoms:
-                    for coord in segment.coords:
-                        infill_points.append(coord)
+                    all_coords.extend(segment.coords)
+                if len(all_coords) >= 2:
+                    infill_points.append(np.array(all_coords[0]))
+                    infill_points.append(np.array(all_coords[-1]))
 
         self.infill_cache[cache_key] = {'polygon': polygon, 'infill': infill_points}
         if clip_end > 0:
@@ -412,73 +392,6 @@ class Shapehandler:
                 return infill_points[clip_start:]
             else:
                 return []
-    
-    def old_generate_infill(self, polygon, spacing=10, angle=0, clip_start = 0, clip_end = 0):
-        """
-        Generate a simple linear infill for a given outline.
-    
-        Args:
-        points (list): List of points defining the outline.
-        spacing (float): Spacing between infill lines.
-        angle (float): Angle of the infill lines in degrees (default is 0 for horizontal lines).
-    
-        Returns:
-        list: List of line segments representing the infill.
-        """
-
-        # Remove duplicate points
-        polygon = [tuple(p) for p in polygon]
-        polygon = list(dict.fromkeys(polygon))
-        
-        # Ensure the polygon is closed
-        if polygon[0] != polygon[-1]:
-            polygon.append(polygon[0])
-
-        # Create a polygon from the outline points
-        outline_polygon = Polygon(polygon)
-
-        # Validate the outline polygon
-        if not outline_polygon.is_valid:
-            print("Outline polygon is invalid. Attempting to fix...")
-            outline_polygon = outline_polygon.buffer(0)
-            if not outline_polygon.is_valid:
-                print("Failed to fix the outline polygon. Skipping infill generation.")
-                return []
-
-        # Get the bounding box of the outline
-        min_x, min_y, max_x, max_y = outline_polygon.bounds
-
-        # Generate parallel lines within the bounding box
-        infill_lines = []
-        y = min_y
-        while y <= max_y:
-            line = LineString([(min_x, y), (max_x, y)])
-            infill_lines.append(line)
-            y += spacing
-
-        # Clip the lines to the outline
-        clipped_lines = [line.intersection(outline_polygon) for line in infill_lines]
-
-        # Filter out empty or invalid lines
-        clipped_lines = [line for line in clipped_lines if not line.is_empty]
-        if len(clipped_lines) > clip_end and clip_end > 0:
-            clipped_lines = clipped_lines[:(-1*clip_end)]  # Limit to 6 lines
-        if len(clipped_lines) > clip_start and clip_start > 0:
-            clipped_lines = clipped_lines[clip_start:]
-
-        # Convert the clipped lines to a list of points
-        infill_points = []
-        for line in clipped_lines:
-            if line.geom_type == 'LineString':
-                for coord in line.coords:
-                    infill_points.append(coord)
-            elif line.geom_type == 'MultiLineString':
-                for segment in line.geoms:
-                    for coord in segment.coords:
-                        infill_points.append(coord)
-        print("infill_points len: ", len(infill_points))
-        #print("infill_points: ", infill_points)
-        return infill_points
     
 #functions to draw realistic UI preview 
 
