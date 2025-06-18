@@ -34,7 +34,8 @@ class ParametersHandler():
             "pattern": "rect",
             "amplitude": 1,
             "frequency":1,
-            "irregularity":0
+            "irregularity":0,
+            "glitch": "none"
         }
         self.ai_scores = {
             "motivation_score": 0,

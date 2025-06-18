@@ -58,6 +58,7 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             frequency: 1,
             pattern: "rect",
             irregularity: 0,
+            glitch: "none"
         },
         draggedGrowthIndex: null,
         selected_index : 0,

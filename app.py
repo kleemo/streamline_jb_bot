@@ -86,9 +86,10 @@ def telegram_webhook():
 
         if "location" in update["message"]:
             location = update["message"]["location"]
-            parameter_handler.set_growth_direction(location)
-        
-            send_message_to_telegram(chat_id, f"Received your location: ({location})")
+            #parameter_handler.set_growth_direction(location)
+            location_string = str(location["latitude"]) + " " + str(location["longitude"])
+            ai_response = get_openai_response("user send location at " + location_string)
+            send_message_to_telegram(chat_id, ai_response)
 
         if "voice" in update["message"]:
             voice = update["message"]["voice"]
@@ -184,6 +185,7 @@ def line_options(data):
     parameter_handler.line_options["pattern_range"] = data["pattern_range"]
     parameter_handler.line_options["pattern_start"] = data["pattern_start"]
     parameter_handler.line_options["irregularity"] = data["irregularity"]
+    parameter_handler.line_options["glitch"] = data["glitch"]
 
     shape_param, line_param = parameter_handler.get_parameters()
     global layer

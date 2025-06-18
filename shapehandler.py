@@ -37,7 +37,8 @@ class Shapehandler:
             "amplitude": 1,
             "frequency":1,
             "resolution":240,
-            "irregularity":0
+            "irregularity":0,
+            "glitch":"none",
         }
 
     def remove_center_point(self, index, layer):
@@ -69,18 +70,21 @@ class Shapehandler:
         self.line_options["transition_rate"] = line_parameters["transition_rate"]
         self.line_options["pattern_range"] = line_parameters["pattern_range"]
         self.line_options["pattern_start"] = line_parameters["pattern_start"]
+        self.line_options["glitch"] = line_parameters["glitch"]
         #regenerate random irregularity of line only when irregularity parameter changes
         if self.line_options["irregularity"] != line_parameters["irregularity"] or self.irregularity_vector == []:
             self.line_options["irregularity"] = line_parameters["irregularity"]
             sparsity = 0.7  # 80% zeros
             small_noise_chance = 0.15  # 15% small noise
-
-            self.irregularity_vector = [
-            0 if random.random() < sparsity
-            else random.uniform(0, 0.6) if random.random() < small_noise_chance / (1 - sparsity)
-            else random.uniform(0, 1.2)
-            for _ in range(self.line_options["resolution"])
-            ]
+            new_irregularity = []
+            i = 0
+            while i < self.line_options["resolution"]:
+                random_steps = int(random.uniform(2,12))
+                random_irregularity = random.random()
+                for j in range(random_steps):
+                    new_irregularity.append(random_irregularity)
+                    i+=1
+            self.irregularity_vector = new_irregularity
 
         
         #initialize the current diameter only at the very beginning
@@ -104,6 +108,9 @@ class Shapehandler:
         ]
         guide_points = corners 
         guide_points.append(corners[0])
+        glitch_prob = random.random()
+        glitch_pos_j = int(random.uniform(0,int(len(displacement)/4)))
+        glitch_pos_i = int(random.uniform(0,len(guide_points)-1))
 
         for i in range(len(guide_points)-1):
             start = guide_points[i]
@@ -124,6 +131,11 @@ class Shapehandler:
                     + perpendicular * displacement[jdx][1]  # Normal offset
                     )
                 points.append(patterned_point)
+                #insert glitch if appropriate
+                if self.line_options["glitch"] == "mesh" and glitch_prob > 0.7 and j== glitch_pos_j and i== glitch_pos_i:
+                    points.append(new_point + perpendicular*-10)
+                    points.append(new_point + perpendicular*-10 + direction*5)
+
                     
         points.append(points[0])  # Close the rectangle by adding the first point again
         # Add the last point to close the rectangle
@@ -134,6 +146,8 @@ class Shapehandler:
         radius_x = self.current_diameter[0] / 2
         radius_y = self.current_diameter[1] / 2
         num_points = len(displacement)  # Number of points to generate for the circle
+        glitch_prob = random.random()
+        glitch_pos_i = int(random.uniform(0,num_points))
         for i in range(num_points):
             angle = np.pi*2- ((2 * np.pi * i) / num_points)
             #angle = 2 * np.pi * i / num_points
@@ -143,6 +157,10 @@ class Shapehandler:
             direction = pc.normalize(pc.vector(pc.point(cx,cy,0), new_point))
             perpendicular = np.array([-direction[1], direction[0], 0])
             points.append(new_point + (direction * displacement[i][1]) + (perpendicular * displacement[i][0]))
+            #insert glitch if appropriate
+            if self.line_options["glitch"] == "mesh" and glitch_prob > 0.7 and i== glitch_pos_i:
+                points.append(new_point + direction*10)
+                points.append(new_point + direction*10 + perpendicular*5)
            
         points.append(points[0])  # Close the circle by adding the first point again
              
@@ -158,6 +176,9 @@ class Shapehandler:
         ]
         guide_points = vertices#ordered_vertices
         guide_points.append(vertices[0])
+        glitch_prob = random.random()
+        glitch_pos_j = int(random.uniform(0,int(len(displacement)/4)))
+        glitch_pos_i = int(random.uniform(0,len(guide_points)-1))
         for i in range(len(guide_points)-1):
             start = guide_points[i]
             end = guide_points[i+1]
@@ -171,6 +192,10 @@ class Shapehandler:
                 new_point = start + j * segment_length * direction
                 perpendicular = np.array([-direction[1], direction[0], 0])
                 points.append(new_point + (perpendicular * displacement[(i*num_points)+j][1]) + (direction * displacement[(i*num_points)+j][0]))
+                #insert glitch if appropriate
+                if self.line_options["glitch"] == "mesh" and glitch_prob > 0.7 and j== glitch_pos_j and i== glitch_pos_i:
+                    points.append(new_point + perpendicular*-10)
+                    points.append(new_point + perpendicular*-10 + direction*5)
                     
         points.append(points[0])  # Close the rectangle by adding the first point again
         # Add the last point to close the rectangle
@@ -238,6 +263,8 @@ class Shapehandler:
                 x = guides[i%bundle_size][0] 
                 y = guides[i%bundle_size][1] 
                 irregularity = self.line_options["irregularity"] * (self.irregularity_vector[i] * self.line_options["amplitude"])
+                if self.shape_options["base_shape"] == "circle":
+                    irregularity *= -1
                 goal = (x,y + irregularity)
 
             if len(self.previous_vector) < resolution:

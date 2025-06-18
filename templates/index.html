@@ -212,6 +212,18 @@
         							<span v-else-if="n === -1">irregularity outside</span>
 								</button>
 						</div>
+						<p>Glitches:</p>
+						<div class="center-point-buttons">
+    							<button
+        							v-for="n in ['none','mesh']"
+        							:key="n"
+        							:class="{ selected: line_options.glitch === n }"
+        							@click="line_options.glitch= n"
+        							type="button"
+    								><span v-if="n === 'none'">none</span>
+        							<span v-else-if="n === 'mesh'">mesh</span>
+								</button>
+						</div>
 
 					</div>
 					<h4>AI Scores</h4>
