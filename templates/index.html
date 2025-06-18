@@ -200,6 +200,18 @@
 									<span v-else-if="n === 4">1</span>
 								</button>
 						</div>
+						<div class="center-point-buttons">
+    							<button
+        							v-for="n in [1,0,-1]"
+        							:key="n"
+        							:class="{ selected: line_options.irregularity === n }"
+        							@click="line_options.irregularity= n"
+        							type="button"
+    								><span v-if="n === 1">irregularity inside</span>
+        							<span v-else-if="n === 0">no irregularity</span>
+        							<span v-else-if="n === -1">irregularity outside</span>
+								</button>
+						</div>
 
 					</div>
 					<h4>AI Scores</h4>

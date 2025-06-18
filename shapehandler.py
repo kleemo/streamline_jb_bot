@@ -7,6 +7,7 @@ Description: is responsible to deal with the creation and adaption of the shapes
 # import custom classes
 import point_calc as pc
 import numpy as np
+import random
 from shapely.geometry import Polygon, LineString
 LINE_CONST = 8
 
@@ -18,6 +19,7 @@ class Shapehandler:
         self.previous_shapes = [] #for layer repeat
         self.current_layer = 0 
         self.infill_cache = {}  # key: index, value: {'polygon': polygon, 'infill': infill_points}
+        self.irregularity_vector = []
         self.shape_options = { 
             "transition_rate":1,
             "base_shape": "circle",
@@ -34,7 +36,8 @@ class Shapehandler:
             "pattern": "rect",
             "amplitude": 1,
             "frequency":1,
-            "resolution":240
+            "resolution":240,
+            "irregularity":0
         }
 
     def remove_center_point(self, index, layer):
@@ -66,6 +69,19 @@ class Shapehandler:
         self.line_options["transition_rate"] = line_parameters["transition_rate"]
         self.line_options["pattern_range"] = line_parameters["pattern_range"]
         self.line_options["pattern_start"] = line_parameters["pattern_start"]
+        #regenerate random irregularity of line only when irregularity parameter changes
+        if self.line_options["irregularity"] != line_parameters["irregularity"] or self.irregularity_vector == []:
+            self.line_options["irregularity"] = line_parameters["irregularity"]
+            sparsity = 0.7  # 80% zeros
+            small_noise_chance = 0.15  # 15% small noise
+
+            self.irregularity_vector = [
+            0 if random.random() < sparsity
+            else random.uniform(0, 0.6) if random.random() < small_noise_chance / (1 - sparsity)
+            else random.uniform(0, 1.2)
+            for _ in range(self.line_options["resolution"])
+            ]
+
         
         #initialize the current diameter only at the very beginning
         #initialize center points 
@@ -221,7 +237,8 @@ class Shapehandler:
             elif (i >= pattern_start and i < (pattern_start + aplication_range)) or (i < (aplication_range-(resolution - pattern_start))):
                 x = guides[i%bundle_size][0] 
                 y = guides[i%bundle_size][1] 
-                goal = (x,y + 10)
+                irregularity = self.line_options["irregularity"] * (self.irregularity_vector[i] * self.line_options["amplitude"])
+                goal = (x,y + irregularity)
 
             if len(self.previous_vector) < resolution:
                 displacement.append(goal)
@@ -420,7 +437,8 @@ class Shapehandler:
             elif (i >= pattern_start and i < (pattern_start + aplication_range)) or (i < (aplication_range-(resolution - pattern_start))):
                 x = guides[i%bundle_size][0] 
                 y = guides[i%bundle_size][1] 
-                goal = (x,y)
+                irregularity = self.line_options["irregularity"] * (self.irregularity_vector[i] * self.line_options["amplitude"])
+                goal = (x,y + irregularity)
 
             displacement.append(goal)
          return displacement

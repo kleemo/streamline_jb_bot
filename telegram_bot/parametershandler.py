@@ -33,7 +33,8 @@ class ParametersHandler():
             "transition_rate":0.5,
             "pattern": "rect",
             "amplitude": 1,
-            "frequency":1
+            "frequency":1,
+            "irregularity":0
         }
         self.ai_scores = {
             "motivation_score": 0,

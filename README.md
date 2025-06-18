@@ -15,3 +15,9 @@ To communicate with the 3D printer Printrund suite https://github.com/kliment/Pr
 
 # 3D Simulation
 For testing during developing and documentation you can view some of the generated 3d shape on this website: https://spectacular-hotteok-47e6cf.netlify.app/
+
+# Setup
+## environment variables
+1. Rename the example_env.txt file to .env
+2. copy paste the open ai API key from the project website into the .env file https://platform.openai.com/settings/proj_LPoMKnZhBYYVyKUUVGr1UXAF/api-keys
+3. create a new telegram bot or use an existing bot and copy paste the bot token into the .env file https://core.telegram.org/bots/tutorial 

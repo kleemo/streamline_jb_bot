@@ -183,6 +183,7 @@ def line_options(data):
     parameter_handler.line_options["transition_rate"] = data["transition_rate"]  
     parameter_handler.line_options["pattern_range"] = data["pattern_range"]
     parameter_handler.line_options["pattern_start"] = data["pattern_start"]
+    parameter_handler.line_options["irregularity"] = data["irregularity"]
 
     shape_param, line_param = parameter_handler.get_parameters()
     global layer

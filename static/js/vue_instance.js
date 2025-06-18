@@ -56,7 +56,8 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             transition_rate:0.5,
             amplitude: 20,
             frequency: 1,
-            pattern: "rect"
+            pattern: "rect",
+            irregularity: 0,
         },
         draggedGrowthIndex: null,
         selected_index : 0,

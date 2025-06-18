@@ -62,7 +62,7 @@ def get_openai_response(user_message): #to improve keep a conversation history p
     global conversation_history 
     conversation_history.append({"role": "user", "content": user_message})
     response = client.chat.completions.create(
-    model="ft:gpt-4o-2024-08-06:streamline:streamline-bot-04-06:BehU07Up",
+    model="ft:gpt-4.1-2025-04-14:streamline:streamline-bot-17-06:BjWPLc0H",
     messages=conversation_history,
     )
     ai_response = response.choices[0].message.content
@@ -82,7 +82,7 @@ def analyze_image_with_openai(image_url):
                 },
             ]})
     response = client.chat.completions.create(
-    model="ft:gpt-4o-2024-08-06:streamline:streamline-bot-04-06:BehU07Up",
+    model="ft:gpt-4.1-2025-04-14:streamline:streamline-bot-17-06:BjWPLc0H",
     messages=conversation_history,
     max_tokens=200,
 )
