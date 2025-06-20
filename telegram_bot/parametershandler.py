@@ -1,3 +1,21 @@
+"""
+parametershandler.py
+
+This module defines the ParametersHandler class, which manages and updates
+various parameters for a Telegram bot based on user input, including text,
+images, audio, and location. It uses AI models to extract scores from inputs
+and maps them to printing parameters for downstream use.
+
+Dependencies:
+    - joblib
+    - numpy
+    - math
+    - json
+    - skimage.io
+    - librosa
+    - os
+    - telegram_bot.handlers (openai_text_embedding, openai_text_scores, openai_image_scores)
+"""
 import joblib
 import numpy as np
 import math
@@ -8,7 +26,25 @@ import os
 from telegram_bot.handlers import openai_text_embedding, openai_text_scores, openai_image_scores
 
 class ParametersHandler():
+    """
+    Handles the extraction, mapping, and management of parameters for the Telegram bot
+    based on various user inputs (text, image, audio, location).
+
+    Attributes:
+        accumulated_chat (str): Accumulated conversation text (user and bot.)
+        accumulated_user_text (str): Accumulated user-only text.
+        num_input (int): Counter for the number of inputs received.
+        filling (int): Placeholder for filling parameter.
+        clip_fill_start (int): Placeholder for clip fill start.
+        clip_fill_end (int): Placeholder for clip fill end.
+        shape_options (dict): Parameters for shape.
+        line_options (dict): Parameters for line.
+        ai_scores (dict): Stores AI-evaluated scores for motivation, complexity, and coherence.
+    """
     def __init__(self, pattern):
+        """
+        Initializes the ParametersHandler with default values and options.
+        """
         self.accumulated_chat = ""
         self.accumulated_user_text = ""
         self.num_input = 0
@@ -45,90 +81,37 @@ class ParametersHandler():
         }
 
     def get_parameters(self):
+        """
+        Returns the current shape and line parameters.
+
+        Returns:
+            tuple: (shape_parameters, line_parameters)
+        """
         shape_parameters =  self.shape_options
         line_parameters = self.line_options
         return shape_parameters , line_parameters
-
-    def set_diameter(self, input_type, input):
-        if input_type == "text":
-            words = input.split(" ")
-            #Word Density (Words per character count)
-            word_density = len(words) / len(input) if len(input) > 0 else 0
-            # Map the length of the input to a range between 15 and 60
-            input_length = len(input)
-            min_range = self.shape_options["diameter"][0] - 15
-            max_range = self.shape_options["diameter"][0] 
-            mapped_length = self.map_parameter_to_range(input_length, min_range, max_range, 1, 100)
-            min_range = self.shape_options["diameter"][1] - 10
-            max_range = self.shape_options["diameter"][1] 
-            mapped_density = self.map_parameter_to_range(word_density, min_range, max_range, 0, 1)
-            self.shape_options["diameter"] = (mapped_length, mapped_density)
-        if input_type == "image":
-            img = imread(input, as_gray=True)
-            # Calculate the average brightness (pixel intensity ranges from 0 to 1)
-            avg_brightness = np.mean(img)
-            median_brightness = np.median(img)
-            min_range = self.shape_options["diameter"][0] - 15
-            max_range = self.shape_options["diameter"][0] 
-            mapped_avg_brightness = self.map_parameter_to_range(avg_brightness, min_range, max_range, 0, 1)
-            min_range = self.shape_options["diameter"][1] - 15
-            max_range = self.shape_options["diameter"][1] 
-            mapped_median_brightness = self.map_parameter_to_range(median_brightness, min_range, max_range, 0, 1)
-            self.shape_options["diameter"] = (mapped_avg_brightness, mapped_median_brightness)
-        if input_type == "voice":
-            input_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), input)
-            if not os.path.exists(input_path):
-                raise FileNotFoundError(f"File not found: {input_path}")
-            
-            y, sr = librosa.load(input_path, sr=None)
-            rms = librosa.feature.rms(y=y) # Root Mean Square Energy loudness of the audio
-            print("audio loudness: " + str(rms.mean()))
-            self.shape_options["diameter"] = (rms.mean() * 800, 30)
-
-    def set_growth_direction(self, location):
-        latiude = location["latitude"]
-        longitude = location["longitude"]
-        ref_lat = 47.390846
-        ref_lon = 8.511541
-        #self.growth_direction = ((longitude - ref_lon) * 200, (latiude - ref_lat)*200)
         
-    
-    def set_pattern_parameters(self, user_text, image_url = None):
-        # Convert the text to a vector using OpenAI's text embedding model
-        #self.feature_vector = openai_text_embedding(self.accumulated_chat)
-        #self.feature_vector = [x *self.pattern_height for x in self.feature_vector]  # Scale the vector to a range
-        if image_url != None:
-            scores = openai_image_scores(image_url)
-            coherence_score = 0.5
-        else:
+    def set_parameters_textInput(self, user_text = None):
+        """
+        Updates parameters based on user text input using AI model scores.
+
+        Args:
+            user_text (str, optional): The user's input text.
+        """
+        # Default scores if ai fails
+        motivation_score = 0.5  
+        dynamics_score = 0.5
+        complexity_score = 0.5
+        coherence_score = 0.5
+        scores = "" #variable to store the scores the ai returns
+        #get scores from ai model
+        if user_text != None:
             scores, coherence = openai_text_scores(user_text, self.accumulated_chat)
             if self.accumulated_user_text == "":
                 coherence_score = 0.5
             else:
                 coherence_score = coherence
-            
-        motivation_score = 0.5 # default if AI fails
-        dynamics_score = 0.5
-        complexity_score = 0.5
-        # Debugging: Print raw AI response
-        #print(f"Raw AI response (repr): {repr(scores)}")
-
-        # Default scores
-        motivation_score = 0.5  # Default if AI fails
-        dynamics_score = 0.5
-        complexity_score = 0.5
-    # Strip Markdown-style code block formatting if present
-        if scores.startswith("```") and scores.endswith("```"):
-            scores = scores.strip("```").strip()
-            # Remove the "json" label if it exists
-            if scores.startswith("json"):
-                scores = scores[4:].strip()
-
-        # Strip whitespace and validate JSON format
-        scores = scores.strip()
-        if not scores.startswith("{") or not scores.endswith("}"):
-            print("Error: AI response is not valid JSON.")
-            
+        # extract the individual scores from the scores object 
         try:
             scores = json.loads(scores)  # Parse the JSON string into a Python dictionary
             motivation_score = float(scores.get("motivational force", 0.5))
@@ -136,17 +119,86 @@ class ParametersHandler():
             complexity_score = float(scores.get("complexity", 0.5))
         except json.JSONDecodeError as e:
             print(f"Error parsing AI response: {e}")
-        max_spacing = 7 #480 // max(self.diameter[0], self.diameter[1]) 
+
+        #assign the ai scores to a corresponding line parameter
         self.line_options["amplitude"] = int(self.map_parameter_to_range(motivation_score, 1, 20, 0, 1))
         self.line_options["frequency"] = int(4 - int(self.map_parameter_to_range(complexity_score, 0, 3, 0, 1)))
         self.line_options["pattern_range"] = int(self.map_parameter_to_range(coherence_score, 0, 50, 0, 1))
 
+        #update the ai scores to display in the UI
         self.ai_scores["motivation_score"] = motivation_score
         self.ai_scores["complexity_score"] = complexity_score
         self.ai_scores["coherence_score"] = coherence_score
-        print(f"Scores: Motivation: {motivation_score}, Dynamics: {dynamics_score}, Complexity: {complexity_score}, Coherence: {coherence_score}")      
+
+    def set_parameters_imgInput(self, image_url=None):
+        """
+        Updates parameters based on image input using AI model scores and raw image analysis.
+
+        Args:
+            image_url (str, optional): Path or URL to the image file.
+        """
+        # Default scores if ai fails
+        motivation_score = 0.5  
+        dynamics_score = 0.5
+        complexity_score = 0.5
+        scores = "" #variable to store the scores the ai returns
+        img = None#variable to store a pixel map of the image
+        #get scores from ai model
+        if image_url != None:
+            scores = openai_image_scores(image_url)
+            img = imread(image_url, as_gray=True)
+        # extract the individual scores from the scores object 
+        try:
+            scores = json.loads(scores)  # Parse the JSON string into a Python dictionary
+            motivation_score = float(scores.get("motivational force", 0.5))
+            dynamics_score = float(scores.get("social dynamics", 0.5))
+            complexity_score = float(scores.get("complexity", 0.5))
+        except json.JSONDecodeError as e:
+            print(f"Error parsing AI response: {e}")
+        #extract extra information from the image, such as average brightness (pixel intensity ranges from 0 to 1)
+        avg_brightness = np.mean(img)
+        median_brightness = np.median(img)
+        #assign the ai scores to a corresponding line parameter
+        self.line_options["amplitude"] = int(self.map_parameter_to_range(motivation_score, 1, 20, 0, 1))
+        self.line_options["frequency"] = int(4 - int(self.map_parameter_to_range(complexity_score, 0, 3, 0, 1)))
+
+        #update the ai scores to display in the UI
+        self.ai_scores["motivation_score"] = motivation_score
+        self.ai_scores["complexity_score"] = complexity_score
+    
+    def set_parameters_audioInput(self,auid_file=None):
+        """
+        Updates parameters based on audio input by extracting audio features.
+
+        Args:
+            auid_file (str, optional): Path to the audio file.
+        """
+        #search for correct file
+        input_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), auid_file)
+        if not os.path.exists(input_path):
+            raise FileNotFoundError(f"File not found: {input_path}")
+            
+        y, sr = librosa.load(input_path, sr=None) #extract raw feature map of the audio
+        #extract extra information from the audio, such as average loudness
+        rms = librosa.feature.rms(y=y) # Root Mean Square Energy loudness of the audio
+        print("audio loudnes: " + str(rms.mean()))
+
+    def set_parameters_locationInput(self,location):
+        """
+        Updates parameters based on location input.
+        maybe we should extend this to also extract informatin about the type of location (i.e. urban, forest...)
+
+        Args:
+            location (dict): Dictionary with 'longitude' and 'latitude' keys.
+        """
+        #extract information from location
+        long= location["longitude"]
+        lat = location["latitude"]
 
     def increase_input(self):
+        """
+        Increments the input counter and updates line parameters periodically.
+        """
         self.num_input +=1
         if self.num_input == 99:
             self.num_input = 0
@@ -154,19 +206,23 @@ class ParametersHandler():
             self.line_options["pattern_start"] += 5
             if self.line_options["pattern_start"] > 100:
                 self.line_options["pattern_start"] = 1
-    def set_rotation(self, layer):
-        if layer <= 0:
-            return
-        increase = self.num_input/layer
-        if layer > 2:
-            increase *= 15
-        #self.rotation += increase
   
-    def set_new_epoch(self):
+    def reset(self):
+        """
+        Resets the input counter and accumulated chat.
+        at the moment not called anywhere
+        """
         self.num_input = 0
         self.accumulated_chat = ""
 
     def add_text(self, user_text, ai_text):
+        """
+        Adds user and AI text to the accumulated chat and user text, truncating if necessary.
+
+        Args:
+            user_text (str): The user's input text.
+            ai_text (str): The AI's response text.
+        """
         self.accumulated_chat += " " + user_text + " " + ai_text
         if len(self.accumulated_chat) > 800: ## Limit the text to 1000 characters about 140 words
             self.accumulated_chat = self.accumulated_chat[-800:] 
@@ -175,17 +231,25 @@ class ParametersHandler():
         if len(self.accumulated_user_text) > 300: ## Limit the text to 1000 characters about 140 words
             self.accumulated_user_text = self.accumulated_user_text[-300:] 
             print("Text user too long, truncating...")
-    
-    def handle_inactivity(self, activity):
-        if activity > 0:
-            self.inactive = False
-        else:
-            self.inactive = True
 
+#helper functions
     @staticmethod
     def map_parameter_to_range(value, min_value, max_value, input_min, input_max):
         """
         Maps a value from one range to another.
+
+        Args:
+            value (float): The value to map.
+            min_value (float): The minimum of the output range.
+            max_value (float): The maximum of the output range.
+            input_min (float): The minimum of the input range.
+            input_max (float): The maximum of the input range.
+
+        Returns:
+            float: The mapped value.
+
+        Raises:
+            ValueError: If input or output ranges are invalid.
         """
         # Ensure the input range is valid
         if input_min >= input_max:

@@ -59,7 +59,6 @@ def telegram_webhook():
         chat_id = update['message']['chat']['id']
         parameter_handler.increase_input()
         chat_activity += 1
-        parameter_handler.set_rotation(layer)
 
         if "text" in update["message"]:
             text = update['message']['text']
@@ -68,7 +67,7 @@ def telegram_webhook():
                 return '', 200 
 
             ai_response = get_openai_response(text)
-            parameter_handler.set_pattern_parameters(text)
+            parameter_handler.set_parameters_textInput(user_text=text)
             parameter_handler.add_text(text, ai_response)
             send_message_to_telegram(chat_id, ai_response)
 
@@ -79,16 +78,14 @@ def telegram_webhook():
             image_url = fetch_file(file_id)
             ai_response = analyze_image_with_openai(image_url)
             parameter_handler.add_text("",ai_response)
-            #parameter_handler.set_pattern_parameters("/image",image_url= image_url)
-            #parameter_handler.set_diameter("image",image_url)
+            parameter_handler.set_parameters_imgInput(image_url=image_url)
 
             send_message_to_telegram(chat_id,ai_response)
-            #send_message_to_telegram(chat_id, f"OpenAI response: {ai_response}")
 
         if "location" in update["message"]:
             location = update["message"]["location"]
-            #parameter_handler.set_growth_direction(location)
             location_string = str(location["latitude"]) + " " + str(location["longitude"])
+            parameter_handler.set_parameters_locationInput(location)
             ai_response = get_openai_response("user send location at " + location_string)
             send_message_to_telegram(chat_id, ai_response)
 
@@ -98,6 +95,7 @@ def telegram_webhook():
             file_url = fetch_file(file_id)
             voice_file_path = download_file(file_url, "voice.ogg")
             transcript = get_audio_response(voice_file_path)
+            parameter_handler.set_parameters_audioInput(auid_file=voice_file_path)
             
             send_message_to_telegram(chat_id, transcript)
         #send updated parameters to the frontend to show on the interface

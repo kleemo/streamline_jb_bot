@@ -179,7 +179,7 @@ def openai_text_scores(user_msg, chat_history):
         ],
         temperature=0.2  # for consistent classification
     )
-    ai_response = response.choices[0].message.content.strip().lower()
+    scores = response.choices[0].message.content.strip().lower()
     prompt = f"""
     Given the following user message and chat history assign a contextual coherence score, ranging from 0 to 1.
     Mesuring how well the latest user message fits within the ongoing conversation. If the user suddenly changes the topic or introduces something unrelated, the score should be low.
@@ -198,8 +198,18 @@ def openai_text_scores(user_msg, chat_history):
         temperature=0.2  # for consistent classification
     )
     coherence_score = float(response.choices[0].message.content.strip().lower())
+    # Strip Markdown-style code block formatting if present
+    if scores.startswith("```") and scores.endswith("```"):
+        scores = scores.strip("```").strip()
+        # Remove the "json" label if it exists
+        if scores.startswith("json"):
+            scores = scores[4:].strip()
+        # Strip whitespace and validate JSON format
+    scores = scores.strip()
+    if not scores.startswith("{") or not scores.endswith("}"):
+        print("Error: AI response is not valid JSON.") 
 
-    return ai_response, coherence_score
+    return scores, coherence_score
 
 def openai_image_scores(image_url):
     prompt = f"""
@@ -226,5 +236,15 @@ def openai_image_scores(image_url):
         ],
         temperature=0.2  # for consistent classification
     )
-    ai_response = response.choices[0].message.content.strip().lower()
-    return ai_response
+    scores = response.choices[0].message.content.strip().lower()
+    # Strip Markdown-style code block formatting if present
+    if scores.startswith("```") and scores.endswith("```"):
+        scores = scores.strip("```").strip()
+        # Remove the "json" label if it exists
+        if scores.startswith("json"):
+            scores = scores[4:].strip()
+        # Strip whitespace and validate JSON format
+    scores = scores.strip()
+    if not scores.startswith("{") or not scores.endswith("}"):
+        print("Error: AI response is not valid JSON.") 
+    return scores
