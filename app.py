@@ -17,7 +17,7 @@ from telegram_bot.handlers import send_message_to_telegram, fetch_file, get_open
 from pyngrok import ngrok
 import requests
 import telegram_bot.parametershandler
-welcome_mesage = "Hello and welcome! This isn’t just a chatbot. It’s a guide through an invisible landscape—one that shifts with every thought you share. As we talk, a living shape grows from our conversation.Type anything to begin the journey."
+
 port = 'COM3' # use this port for Windows
 # port = '/dev/tty.usbmodem14101' # use this port value for Aurelian
 baud = 115200 # baud rate as defined in the streamline-delta-arduino firmware
@@ -53,7 +53,6 @@ def telegram_webhook():
     global parameter_handler
     global layer
     global chat_activity
-    global welcome_mesage
     
     if 'message' in update:
         chat_id = update['message']['chat']['id']
@@ -63,7 +62,9 @@ def telegram_webhook():
         if "text" in update["message"]:
             text = update['message']['text']
             if text == "/start":
-                send_message_to_telegram(chat_id, welcome_mesage)
+                if random.random() > 0.3: #only start conversation sometimes
+                    ai_response = get_openai_response("initiate the conversation with the user")
+                    send_message_to_telegram(chat_id, ai_response)
                 return '', 200 
 
             ai_response = get_openai_response(text)
@@ -314,7 +315,6 @@ def start_print():
     global layer
     global height
     global height_max
-    global chat_activity
     global update_rate
     
     global shape_handler
@@ -332,9 +332,7 @@ def start_print():
 
         # create the shape points
         if layer % update_rate == 0:
-            #update parameters every 3 layers
-            parameter_handler.handle_inactivity(chat_activity)
-            chat_activity = 0
+            #update parameters
             
             shape_parameter, line_parameters = parameter_handler.get_parameters()
             shape_handler.update_parameters(shape_parameter, line_parameters, layer)
