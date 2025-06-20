@@ -14,7 +14,7 @@ LINE_CONST = 8
 class Shapehandler:
     def __init__(self):
         self.current_rotation = 0
-        self.current_diameter = [0,0]
+        self.current_diameter = []
         self.previous_vector = [] #for line pattern transition
         self.previous_shapes = [] #for layer repeat
         self.current_layer = 0 
@@ -23,11 +23,12 @@ class Shapehandler:
         self.shape_options = { 
             "transition_rate":1,
             "base_shape": "circle",
-            "diameter": [0,0],
+            "diameter": [],
             "rotation": 0,
             "center_points": [],
             "growth_directions": [],
             "repetitions": 1,
+            "free_hand_form":[],
         }
         self.line_options = {
             "pattern_range": 60,
@@ -45,6 +46,8 @@ class Shapehandler:
         if layer > 0:
             del self.shape_options["center_points"][index]
             del self.shape_options["growth_directions"][index]
+            del self.shape_options["diameter"][index]
+            del self.current_diameter[index]
              # Remove the infill at the deleted index
             if index in self.infill_cache:
                 del self.infill_cache[index]
@@ -63,6 +66,7 @@ class Shapehandler:
         self.shape_options["rotation"] = shape_parameters["rotation"]
         self.shape_options["growth_directions"] = shape_parameters["growth_directions"]
         self.shape_options["transition_rate"] = shape_parameters["transition_rate"]
+        self.shape_options["free_hand_form"] = shape_parameters["free_hand_form"]
 
         self.line_options["pattern"] = line_parameters["pattern"]
         self.line_options["amplitude"] = line_parameters["amplitude"]
@@ -90,16 +94,15 @@ class Shapehandler:
         #initialize the current diameter only at the very beginning
         #initialize center points 
         if layer == 0:
-            print("upadate current diameter")
             self.shape_options["center_points"] = shape_parameters["center_points"]
             self.current_diameter = shape_parameters["diameter"]
         print("Updated shape_options: ", self.shape_options)
         print("Updated line_options: ", self.line_options)
     
-    def generate_rectangle(self,displacement, cx, cy):
+    def generate_rectangle(self,displacement, cx, cy, dx, dy):
         points = []
-        length = self.current_diameter[0]
-        heigth = self.current_diameter[1]
+        length = dx
+        heigth = dy
         corners = [
         pc.point(cx-length/2, cy-heigth/2, 0),
         pc.point(cx+length/2, cy-heigth/2, 0),
@@ -141,10 +144,10 @@ class Shapehandler:
         # Add the last point to close the rectangle
         return points
     
-    def generate_circle(self,displacement, cx,cy):
+    def generate_circle(self,displacement, cx,cy,dx,dy):
         points = []	
-        radius_x = self.current_diameter[0] / 2
-        radius_y = self.current_diameter[1] / 2
+        radius_x = dx / 2
+        radius_y = dy / 2
         num_points = len(displacement)  # Number of points to generate for the circle
         glitch_prob = random.random()
         glitch_pos_i = int(random.uniform(0,num_points))
@@ -166,13 +169,13 @@ class Shapehandler:
              
         return points
     
-    def generate_triangle(self, displacement, cx, cy):
+    def generate_triangle(self, displacement, cx, cy,dx,dy):
         points = []
         # Define the vertices of the triangle
         vertices = [
             pc.point(cx, cy + self.current_diameter[1] / 2, 0),  # Top vertex
-            pc.point(cx - self.current_diameter[0] / 2, cy - self.current_diameter[1] / 2, 0),  # Bottom left vertex
-            pc.point(cx + self.current_diameter[0] / 2, cy - self.current_diameter[1] / 2, 0)   # Bottom right vertex
+            pc.point(cx - self.current_diameter[0] / 2, cy - dx/ 2, 0),  # Bottom left vertex
+            pc.point(cx + self.current_diameter[0] / 2, cy - dy / 2, 0)   # Bottom right vertex
         ]
         guide_points = vertices#ordered_vertices
         guide_points.append(vertices[0])
@@ -199,6 +202,39 @@ class Shapehandler:
                     
         points.append(points[0])  # Close the rectangle by adding the first point again
         # Add the last point to close the rectangle
+        return points
+    
+    def generate_freeform(self,displacement,cx,cy,dx,dy):
+        points = []
+        vertecies = []
+        if len(self.shape_options["free_hand_form"]) <= 1:
+            return []
+        for i in range(len(self.shape_options["free_hand_form"])):
+            vertecies.append(pc.point(self.shape_options["free_hand_form"][i][0]*dx + cx,-self.shape_options["free_hand_form"][i][1]*dy + cy,0)) 
+        
+        glitch_prob = random.random()
+        glitch_pos_j = int(random.uniform(0,int(len(displacement)/4)))
+        glitch_pos_i = int(random.uniform(0,len(vertecies)-1))
+        for i in range(len(vertecies)-1):
+            start = vertecies[i]
+            end = vertecies[i+1]
+                # Calculate the direction vector
+            direction = pc.normalize(pc.vector(start, end))
+            distance = pc.distance(start, end)
+            num_points = int(len(displacement)/(len(vertecies)-1))  # Number of points to generate for the line
+            segment_length = distance / num_points
+            new_point = start
+            for j in range(0,num_points):
+                new_point = start + j * segment_length * direction
+                perpendicular = np.array([-direction[1], direction[0], 0])
+                points.append(new_point + (perpendicular * displacement[(i*num_points)+j][1]) + (direction * displacement[(i*num_points)+j][0]))
+                #insert glitch if appropriate
+                if self.line_options["glitch"] == "mesh" and glitch_prob > 0.7 and j== glitch_pos_j and i== glitch_pos_i:
+                    points.append(new_point + perpendicular*-10)
+                    points.append(new_point + perpendicular*-10 + direction*5)
+                    
+        points.append(points[0])  # Close the rectangle by adding the first point again
+
         return points
     
     def generate_loop(self,num_points, height):
@@ -302,11 +338,12 @@ class Shapehandler:
                 direction = pc.normalize(pc.vector(np.array(center), np.array(self.shape_options["growth_directions"][i])))
                 self.shape_options["center_points"][i] += (direction * 0.4)
                 
-        # gradually update diameter
-        diameter_distance = pc.distance(self.current_diameter,self.shape_options["diameter"])
-        if diameter_distance > 1:
-            direction = pc.normalize(pc.vector(np.array(self.current_diameter), np.array(self.shape_options["diameter"])))
-            self.current_diameter += (direction * self.shape_options["transition_rate"]) 
+        # gradually update diameters
+        for i in range(len(self.shape_options["diameter"])):
+            diameter_distance = pc.distance(self.current_diameter[i],self.shape_options["diameter"][i])
+            if diameter_distance > 1:
+                direction = pc.normalize(pc.vector(np.array(self.current_diameter[i]), np.array(self.shape_options["diameter"][i])))
+                self.current_diameter[i] += (direction * self.shape_options["transition_rate"]) 
 
         #generate points of the outlines for each center point
         for i in range(len(self.shape_options["center_points"])):
@@ -315,11 +352,13 @@ class Shapehandler:
             cy = center[1]
             points = []
             if self.shape_options["base_shape"] == "rectangle":
-                points = self.generate_rectangle(displacement, cx, cy)
+                points = self.generate_rectangle(displacement, cx, cy,self.current_diameter[i][0],self.current_diameter[i][1])
             elif self.shape_options["base_shape"] == "circle":
-                points = self.generate_circle(displacement, cx, cy)
+                points = self.generate_circle(displacement, cx, cy,self.current_diameter[i][0],self.current_diameter[i][1])
             elif self.shape_options["base_shape"] == "triangle":
-                points = self.generate_triangle(displacement, cx, cy)
+                points = self.generate_triangle(displacement, cx, cy,self.current_diameter[i][0],self.current_diameter[i][1])
+            elif self.shape_options["base_shape"] == "freehand":
+                points = self.generate_freeform(displacement,cx,cy,self.current_diameter[i][0],self.current_diameter[i][1])
             shapes.append(points)
 
         #apply layer rotation
@@ -344,11 +383,13 @@ class Shapehandler:
         cy = self.shape_options["center_points"][index][1]
         displacement= [(0, 0)] * self.line_options["resolution"]
         if self.shape_options["base_shape"] == "rectangle":
-                polygon = self.generate_rectangle(displacement, cx, cy)
+                polygon = self.generate_rectangle(displacement, cx, cy,self.current_diameter[index][0], self.current_diameter[index][1])
         elif self.shape_options["base_shape"] == "circle":
-                polygon = self.generate_circle(displacement, cx, cy)
+                polygon = self.generate_circle(displacement, cx, cy,self.current_diameter[index][0], self.current_diameter[index][1])
         elif self.shape_options["base_shape"] == "triangle":
-                polygon = self.generate_triangle(displacement, cx, cy)
+                polygon = self.generate_triangle(displacement, cx, cy,self.current_diameter[index][0], self.current_diameter[index][1])
+        elif self.shape_options["base_shape"] == "freehand":
+                polygon = self.generate_freeform(displacement, cx, cy,self.current_diameter[index][0], self.current_diameter[index][1])
         for j in range(len(polygon)):
                 polygon[j] = pc.rotate(polygon[j],pc.point(cx,cy,0) , self.current_rotation)
         polygon = [tuple(p) for p in polygon]

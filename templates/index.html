@@ -51,11 +51,11 @@
 				<div>
 					<div class="slicer">
 						<h4>Slicer</h4>
-						<p>Extrusion Rate: [[ slicer_options.extrusion_rate ]]</p>
+						<p>E controls how much filament is extruded: [[ slicer_options.extrusion_rate ]]</p>
 						<!-- <input v-model="slicer_options.extrusion_rate" placeholder=""> -->
 						<vue-range-slider :tooltip="null" :min="+0" :max="+1" :step="+0.01" ref="slider"
 							v-model="slicer_options.extrusion_rate"></vue-range-slider>
-						<p>Feed Rate: [[ slicer_options.feed_rate ]]</p>
+						<p>F controls how fast the move (and extrusion) happens: [[ slicer_options.feed_rate ]]</p>
 						<vue-range-slider :tooltip="null" :min="+0" :max="+2000" step="+1" ref="slider"
 							v-model="slicer_options.feed_rate"></vue-range-slider>
 						
@@ -84,7 +84,7 @@
 							<p>base:</p>
 							<div class="center-point-buttons">
     							<button
-        							v-for="n in ['circle', 'rectangle', 'triangle']"
+        							v-for="n in ['circle', 'rectangle', 'triangle', 'freehand']"
         							:key="n"
         							:class="{ selected: shape_options.base_shape === n }"
         							@click="shape_options.base_shape= n"
@@ -92,6 +92,7 @@
     								><span v-if="n === 'circle'">&#9679;</span>
         							<span v-else-if="n === 'rectangle'">&#9645;</span>
         							<span v-else-if="n === 'triangle'">&#9650;</span>
+									<span v-else-if="n === 'freehand'">free hand</span>
 								</button>
 							</div>
 							<p>filling (spacing between fill lines):</p>
@@ -131,6 +132,18 @@
 									type="button"
     							>+</button>
 							</div>
+							<p>outline:</p>
+							<div class="center-point-buttons">
+    							<button
+        							v-for="n in [true,false]"
+        							:key="n"
+        							:class="{ selected: outline === n }"
+        							@click="outline_toggle"
+        							type="button"
+    								><span v-if="n === true">yes</span>
+        							<span v-else-if="n === false">no</span>
+								</button>
+							</div>
 							<p>number of center points:</p>
 							<div class="center-point-buttons">
     							<button
@@ -144,15 +157,23 @@
 									:disabled="printing"
 								>+</button>
 							</div>
-							<p>x-diameter: [[ shape_options.diameter_x ]]</p>
+							<p>x-diameter: [[ shape_options.diameter_x[selected_index] ]]</p>
 								<vue-range-slider :tooltip="null" :min="+1" :max="+300" :step="+1" ref="slider"
-								v-model="shape_options.diameter_x"></vue-range-slider>
-							<p>y-diameter: [[ shape_options.diameter_y ]]</p>
+								v-model="shape_options.diameter_x[selected_index]"></vue-range-slider>
+							<p>y-diameter: [[ shape_options.diameter_y[selected_index] ]]</p>
 								<vue-range-slider :tooltip="null" :min="+1" :max="+300" :step="+1" ref="slider"
-								v-model="shape_options.diameter_y"></vue-range-slider>
+								v-model="shape_options.diameter_y[selected_index]"></vue-range-slider>
 						</div>
 						<div>
 							<canvas id="centerPointsCanvas" width="400" height="400" style="border:1px solid #757575; background-color: #969494;"></canvas>
+						</div>
+						<div style="position: relative; display: inline-block;">
+							<button
+								@click="clearFreeHandShape"
+								type="button"
+								style="position: absolute; top: 8px; left: 8px; z-index: 2;"
+							>Clear</button>
+							<canvas @click="addVertex" id="freeHandShapeCanvas" width="400" height="400" style="border:1px solid #757575; background-color: #eaeaea;"></canvas>
 						</div>
 					</div>
 					<h4>Line</h4>

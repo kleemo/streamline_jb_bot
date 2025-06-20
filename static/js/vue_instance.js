@@ -33,22 +33,24 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             transition_rate: 1,
             repetitions: 1,
             base_shape: "circle",
-            diameter_x: 60,
-            diameter_y: 60,
+            diameter_x: [60,60,60,60],
+            diameter_y: [60,60,60,60],
             num_center_points: 4, //should be same as lenght of points arrays
             growth_directions:[[-40,50], [40,5],[-40,-30],[-30,20]],
             points: [[-40,50], [40,5],[-40,-30],[-30,20]],
             filling: 0,
             clip_start:0,
             clip_end:0,
-            rotation:0
+            rotation:0,
+            free_hand_form:[],
         },
         current_shape: {
             center_points: [[-40,50], [40,5],[-40,-30],[-30,20]],
-            diameter_x: 60,
-            diameter_y: 60,
+            diameter_x: [60,60,60,60],
+            diameter_y: [60,60,60,60],
         },
         infill: [],
+        outline:true,
         line_displacement: [],
         line_options: {
             pattern_range:40,
@@ -67,6 +69,7 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
     mounted() {
     this.drawCenterPoints();
     this.draw_line_preview();
+    this.drawFreeHandShape();
     const canvas = document.getElementById('centerPointsCanvas');
     canvas.addEventListener('mousedown', this.onCanvasMouseDown);
     canvas.addEventListener('mousemove', this.onCanvasMouseMove);
@@ -193,12 +196,12 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             this.draw_grid(ctx);
             const points = this.shape_options.points;
             const num_points = this.shape_options.num_center_points;
-            const rx = this.shape_options.diameter_x * DRAWING_SCALING/ 2;
-            const ry = this.shape_options.diameter_y * DRAWING_SCALING/ 2;
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
             
             for (let i = 0; i < num_points; i++) {
+                const rx = this.shape_options.diameter_x[i] * DRAWING_SCALING/ 2;
+                const ry = this.shape_options.diameter_y[i] * DRAWING_SCALING/ 2;
             if (i <= this.current_shape.center_points.length) {
                 points[i][0] = this.current_shape.center_points[i][0];
                 points[i][1] = this.current_shape.center_points[i][1];
@@ -219,13 +222,21 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
                     ctx.lineTo(cx - rx, cy + ry); // Bottom left vertex
                     ctx.lineTo(cx + rx, cy + ry); // Bottom right vertex
                     ctx.closePath();
+                } else if (this.shape_options.base_shape === "freehand"){
+                // Draw freehand form as base shape
+                    if (this.shape_options.free_hand_form == []) return;
+                    pts = this.shape_options.free_hand_form;
+                    ctx.moveTo(cx+pts[0][0]*rx*2,cy+pts[0][1]*ry*2);
+                    for(let j=1; j< pts.length;j++){
+                        ctx.lineTo(cx+pts[j][0]*rx*2,cy+pts[j][1]*ry*2);
+                    }
                 }
                 ctx.strokeStyle = "#000000";
                 ctx.lineWidth = 2;
                 ctx.stroke();
                 // draw current diameter
-                const crx = this.current_shape.diameter_x * DRAWING_SCALING/ 2;
-                const cry = this.current_shape.diameter_y * DRAWING_SCALING/ 2;
+                const crx = this.current_shape.diameter_x[i] * DRAWING_SCALING/ 2;
+                const cry = this.current_shape.diameter_y[i] * DRAWING_SCALING/ 2;
                 ctx.beginPath();
                 if (this.shape_options.base_shape === "rectangle" && this.layer > 0) {
                 // Draw rectangle centered at (cx, cy)
@@ -239,6 +250,13 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
                     ctx.lineTo(cx - crx, cy + cry); // Bottom left vertex
                     ctx.lineTo(cx + crx, cy + cry); // Bottom right vertex
                     ctx.closePath();
+                } else if (this.shape_options.base_shape === "freehand" && this.layer > 0) {
+                    if (this.shape_options.free_hand_form == []) return;
+                    pts = this.shape_options.free_hand_form;
+                    ctx.moveTo(cx+pts[0][0]*crx*2,cy+pts[0][1]*cry*2);
+                    for(let j=1; j< pts.length;j++){
+                        ctx.lineTo(cx+pts[j][0]*crx*2,cy+pts[j][1]*cry*2);
+                    }
                 }
                 ctx.strokeStyle = "#757575";
                 ctx.lineWidth = 2;
@@ -294,6 +312,55 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             ctx.lineWidth = 2;
             ctx.stroke();
 
+        },
+        addVertex(event) {
+            const canvas = document.getElementById('freeHandShapeCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            // Normalize: -1 to 1, with (0,0) at center
+            const normX = (x - canvas.width / 2) / (canvas.width / 2);
+            const normY = (y - canvas.height / 2) / (canvas.height / 2);
+            this.shape_options.free_hand_form.push([normX, normY]);
+            this.drawFreeHandShape();
+        },
+        drawFreeHandShape() {
+            const canvas = document.getElementById('freeHandShapeCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            this.draw_grid(ctx);
+            //draw center
+            ctx.beginPath();
+            ctx.arc(canvas.width/2,canvas.height/2,5,0,2*Math.PI);
+            ctx.fillStyle = "#757575"; 
+            ctx.fill();
+
+            const points = this.shape_options.free_hand_form;
+            if (points.length === 0) return;
+            ctx.beginPath();
+            ctx.moveTo(
+                points[0][0] * (canvas.width / 2) + canvas.width / 2,
+                points[0][1] * (canvas.height / 2) + canvas.height / 2
+            );
+            ctx.arc(points[0][0] * (canvas.width / 2) + canvas.width / 2,
+                    points[0][1] * (canvas.height / 2) + canvas.height / 2, 
+                    4, 0, 2 * Math.PI
+            );
+            ctx.fillStyle = "#000";
+            ctx.fill();
+            for (let i = 1; i < points.length; i++) {
+                ctx.lineTo( points[i][0] * (canvas.width / 2) + canvas.width / 2,
+                            points[i][1] * (canvas.height / 2) + canvas.height / 2
+                );
+            }
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        },
+        clearFreeHandShape() {
+            this.shape_options.free_hand_form = [];
+            this.drawFreeHandShape();
         },
         draw_grid: function (ctx) {
             const canvas = ctx.canvas;
@@ -372,6 +439,10 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
                 this.shape_options.points.splice(this.selected_index,1);
                 this.current_shape.center_points.splice(this.selected_index,1);
                 this.shape_options.growth_directions.splice(this.selected_index,1);
+                this.shape_options.diameter_x.splice(this.selected_index,1);
+                this.shape_options.diameter_y.splice(this.selected_index,1);
+                this.current_shape.diameter_x.splice(this.selected_index,1);
+                this.current_shape.diameter_y.splice(this.selected_index,1);
                 socket.emit("remove_center_point",{index:this.selected_index})
                 this.selected_index = 0;
             }
@@ -384,7 +455,16 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
                 this.shape_options.points.push([0,0]);
                 this.current_shape.center_points.push([0,0]);
                 this.shape_options.growth_directions.push([0,0]);
+                this.shape_options.diameter_x.push(60);
+                this.shape_options.diameter_y.push(60);
+                this.current_shape.diameter_x.push(60);
+                this.current_shape.diameter_y.push(60);
             }
+        },
+        outline_toggle:function(event) {
+            this.outline = !this.outline;
+            socket.emit("set_outline",{outline:this.outline})
+
         },
         move_up: function (event) {
             socket.emit('move_up');

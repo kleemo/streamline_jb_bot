@@ -2,6 +2,28 @@ import requests
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
+import tensorflow as tf
+import tensorflow_hub as hub
+import numpy as np
+import librosa
+
+# Load the YAMNet model
+yamnet_model_handle = 'https://tfhub.dev/google/yamnet/1'
+model = hub.load(yamnet_model_handle)
+
+# Load class names (YAMNet uses 521 classes from AudioSet)
+class_map_path = tf.keras.utils.get_file(
+    'yamnet_class_map.csv',
+    'https://raw.githubusercontent.com/tensorflow/models/master/research/audioset/yamnet/yamnet_class_map.csv'
+)
+
+import csv
+class_names = []
+with open(class_map_path, 'r') as f:
+    reader = csv.reader(f)
+    next(reader)  # skip header
+    for row in reader:
+        class_names.append(row[2])  # Display name column
 # Load environment variables from .env file
 load_dotenv()
 # Telegram Bot API token
@@ -85,10 +107,33 @@ def analyze_image_with_openai(image_url):
     model="ft:gpt-4.1-2025-04-14:streamline:streamline-bot-17-06:BjWPLc0H",
     messages=conversation_history,
     max_tokens=200,
-)
+    )
     ai_response = response.choices[0].message.content
     conversation_history.append({"role": "assistant", "content": ai_response})
     return ai_response
+
+def get_audio_response(file_path):
+    #classify audio file first
+    waveform, sr = librosa.load(file_path, sr=16000)
+    waveform = waveform[:len(waveform) // 16000 * 16000]  # Clip to full seconds
+    waveform = tf.convert_to_tensor(waveform, dtype=tf.float32)
+    scores, embeddings, spectrogram = model(waveform)
+    
+    mean_scores = tf.reduce_mean(scores, axis=0)
+    top_class_index = tf.argmax(mean_scores).numpy()
+    top_class_name = class_names[top_class_index]
+    
+    global conversation_history 
+    conversation_history.append({"role": "user", "content": f"the user send a sound of {top_class_name}."})
+    response = client.chat.completions.create(
+    model="ft:gpt-4.1-2025-04-14:streamline:streamline-bot-17-06:BjWPLc0H",
+    messages=conversation_history,
+    )
+    ai_response = response.choices[0].message.content
+    conversation_history.append({"role": "assistant", "content": ai_response})
+    return ai_response 
+
+
 
 
 def openai_text_embedding(user_msg):

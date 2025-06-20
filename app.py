@@ -13,7 +13,7 @@ import shapehandler
 import slicerhandler
 import point_calc as pc
 
-from telegram_bot.handlers import send_message_to_telegram, fetch_file, get_openai_response, download_file, analyze_image_with_openai, TELEGRAM_API_URL
+from telegram_bot.handlers import send_message_to_telegram, fetch_file, get_openai_response, download_file, analyze_image_with_openai, TELEGRAM_API_URL, get_audio_response
 from pyngrok import ngrok
 import requests
 import telegram_bot.parametershandler
@@ -36,6 +36,7 @@ height_max = 5000
 printing = False
 toggle_state = False
 update_rate = 1
+outline = True
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
@@ -79,7 +80,7 @@ def telegram_webhook():
             ai_response = analyze_image_with_openai(image_url)
             parameter_handler.add_text("",ai_response)
             #parameter_handler.set_pattern_parameters("/image",image_url= image_url)
-            parameter_handler.set_diameter("image",image_url)
+            #parameter_handler.set_diameter("image",image_url)
 
             send_message_to_telegram(chat_id,ai_response)
             #send_message_to_telegram(chat_id, f"OpenAI response: {ai_response}")
@@ -96,8 +97,9 @@ def telegram_webhook():
             file_id = voice["file_id"]
             file_url = fetch_file(file_id)
             voice_file_path = download_file(file_url, "voice.ogg")
+            transcript = get_audio_response(voice_file_path)
             
-            send_message_to_telegram(chat_id, f"voice message function not yet impelemented")
+            send_message_to_telegram(chat_id, transcript)
         #send updated parameters to the frontend to show on the interface
         shape_parameters , line_parameters = parameter_handler.get_parameters()
         socketio.emit('update_shape_options',shape_parameters)
@@ -154,17 +156,23 @@ def removeCenterPoint(data):
     global layer
     shape_handler.remove_center_point(int(data["index"]),layer)
 
+@socketio.on('set_outline')
+def set_outline(data):
+    global outline
+    outline = data["outline"]
+
 @socketio.on('shape_options')
 def shape_options(data):
     print("shape_options socket")
     shape_handler.shape_options['repetitions'] = data["repetitions"]
-    parameter_handler.shape_options["diameter"] = (data["diameter_x"], data["diameter_y"])
+    parameter_handler.shape_options["diameter"] = list(zip(data["diameter_x"], data["diameter_y"]))
     parameter_handler.shape_options["num_center_points"] = data["num_center_points"]
     parameter_handler.shape_options["growth_directions"] = data["growth_directions"]
     parameter_handler.shape_options["base_shape"] = data["base_shape"]
     parameter_handler.shape_options["center_points"] = data["points"]
     parameter_handler.shape_options["transition_rate"] = data["transition_rate"]
     parameter_handler.shape_options["rotation"] = data["rotation"]
+    parameter_handler.shape_options["free_hand_form"] = data["free_hand_form"]
 
     parameter_handler.filling = data["filling"]
     parameter_handler.clip_fill_start = data["clip_start"]
@@ -335,14 +343,16 @@ def start_print():
         shapes = shape_handler.generate_next_layer(layer)#shape_handler.simpple_rectangle()#shape_handler.simple_circle()#shape_handler.simpple_rectangle()#shape_handler.generate_next_layer(layer)
 
         # print outline and infill of each shape
+        global outline
         for i, points in enumerate(shapes):
             if len(points) > 0:
                 #print outline of the shape
-                gcode = slicer_handler.create(height, points, max_distance=200)
-                print_handler.send(gcode)
-                while (print_handler.is_printing() or print_handler.is_paused()):
-                    time.sleep(2)
-                    print("print status :",print_handler.status())
+                if outline:
+                    gcode = slicer_handler.create(height, points, max_distance=200)
+                    print_handler.send(gcode)
+                    while (print_handler.is_printing() or print_handler.is_paused()):
+                        time.sleep(2)
+                        print("print status :",print_handler.status())
                 # generate and print infill of the shapes
                 if parameter_handler.filling > 0:
                     infill = shape_handler.generate_infill(index=i, spacing=parameter_handler.filling, clip_end=parameter_handler.clip_fill_end, clip_start=parameter_handler.clip_fill_start)
@@ -360,7 +370,8 @@ def start_print():
         emit('layer', {'layer': layer}) #"We are on Layer" – Output
         if layer % update_rate == 0:
             center_points = [list(pt) for pt in shape_handler.shape_options["center_points"]]
-            emit('update_current_shape',{'center_points':center_points,'diameter_x': shape_handler.current_diameter[0], 'diameter_y': shape_handler.current_diameter[1]})
+            unzipped_x, unzipped_y = map(list, zip(*shape_handler.current_diameter))
+            emit('update_current_shape',{'center_points':center_points,'diameter_x': unzipped_x, 'diameter_y': unzipped_y})
         time.sleep(1)  # Wait 10 seconds for simulation
             
             
@@ -368,7 +379,7 @@ def start_print():
             
         print("height = " + str(height))
         print("layer = " + str(layer))
-        while shape_handler.current_diameter[0] < 5 or shape_handler.current_diameter[1] < 5:
+        while shape_handler.current_diameter[0][0] < 5 or shape_handler.current_diameter[0][1] < 5:
             print("diameter too narrow")
             time.sleep(5)
     #print_handler.send(slicer_handler.end())

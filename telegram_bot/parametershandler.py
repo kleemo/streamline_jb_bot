@@ -20,12 +20,13 @@ class ParametersHandler():
         self.shape_options = { 
             "transition_rate":1,
             "base_shape": "circle",
-            "diameter": [60,60],
+            "diameter": [],
             "rotation": 0,
             "center_points": [(-40,50), (40,5),(-40,-30),(-30,20),(-10,-30)],
             "num_center_points": 4,
             "growth_directions": [(-40,50), (40,5),(-40,-30),(-30,20),(-10,-30)],
             "repetitions": 1,
+            "free_hand_form":[],
         }
         self.line_options = {
             "pattern_range": 60,
