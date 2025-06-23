@@ -17,6 +17,7 @@ from telegram_bot.handlers import send_message_to_telegram, fetch_file, get_open
 from pyngrok import ngrok
 import requests
 import telegram_bot.parametershandler
+import threading
 
 port = 'COM3' # use this port for Windows
 # port = '/dev/tty.usbmodem14101' # use this port value for Aurelian
@@ -27,6 +28,8 @@ print_handler = DefaultUSBHandler(port, baud)
 slicer_handler = slicerhandler.Slicerhandler()
 shape_handler = shapehandler.Shapehandler()
 chat_activity = 0
+webhook_exposed = False
+last_chat_id = 0
 
 parameter_handler = telegram_bot.parametershandler.ParametersHandler("straight")
 
@@ -36,6 +39,7 @@ height_max = 5000
 printing = False
 toggle_state = False
 update_rate = 1
+simulation_time = 2
 outline = True
 
 app = Flask(__name__)
@@ -53,9 +57,11 @@ def telegram_webhook():
     global parameter_handler
     global layer
     global chat_activity
+    global last_chat_id
     
     if 'message' in update:
         chat_id = update['message']['chat']['id']
+        last_chat_id = chat_id
         parameter_handler.increase_input()
         chat_activity += 1
 
@@ -114,22 +120,39 @@ def hello():
     print("hello socket")
     emit('layer', { 'layer': layer })
     global update_rate
+    global simulation_time
     emit('slicer_options', {
         'extrusion_rate': slicer_handler.params['extrusion_rate'],
         'feed_rate': slicer_handler.params['feed_rate'],
         'layer_hight': slicer_handler.params['layer_hight'],
-        'update_rate': update_rate
+        'update_rate': update_rate,
+        'simulation_time': simulation_time,
     })
+
+def inactivity_checker():
+    global chat_activity, webhook_exposed, parameter_handler, last_chat_id
+    while True:
+        time.sleep(60)  # Check every 60 seconds
+        chat_activity -= 1
+        if webhook_exposed and chat_activity <= 0:
+            # Get the last chat_id
+            if last_chat_id > 0:
+                ai_response = get_openai_response("Send a message to re-engage the user after inactivity.")
+                send_message_to_telegram(last_chat_id, ai_response)
+                chat_activity = 0
+        
 
 @socketio.on('expose_webhook')
 def expose_webhook():
     """Expose Flask server via ngrok and send URL to client."""
+    global webhook_exposed
     try:
         public_url = ngrok.connect(5000).public_url
         emit('webhook_url', {'url': public_url})
         try:
             requests.get(f"{TELEGRAM_API_URL}/deleteWebhook", params={'drop_pending_updates': True})
             requests.get(f"{TELEGRAM_API_URL}/setWebhook", params={'url': public_url + "/webhook"})
+            webhook_exposed = True
         except Exception as e:
             print(f"Failed to set Telegram webhook: {e}")
     except Exception as e:
@@ -141,8 +164,9 @@ def slicer_options(data):
     slicer_handler.params['extrusion_rate'] = data["extrusion_rate"]
     slicer_handler.params['feed_rate'] = data["feed_rate"]
     slicer_handler.params['layer_hight'] = data["layer_hight"]
-    global update_rate
+    global update_rate, simulation_time
     update_rate = data['update_rate']
+    simulation_time = data['simulation_time']
 
 
 @socketio.on('layer')
@@ -315,7 +339,7 @@ def start_print():
     global layer
     global height
     global height_max
-    global update_rate
+    global update_rate, simulation_time
     
     global shape_handler
     
@@ -368,7 +392,7 @@ def start_print():
             center_points = [list(pt) for pt in shape_handler.shape_options["center_points"]]
             unzipped_x, unzipped_y = map(list, zip(*shape_handler.current_diameter))
             emit('update_current_shape',{'center_points':center_points,'diameter_x': unzipped_x, 'diameter_y': unzipped_y})
-        time.sleep(1)  # Wait 10 seconds for simulation
+        time.sleep(simulation_time)  # Wait 10 seconds for simulation
             
             
 
@@ -379,6 +403,9 @@ def start_print():
             print("diameter too narrow")
             time.sleep(5)
     #print_handler.send(slicer_handler.end())
+
+# Start the inactivity checker thread
+threading.Thread(target=inactivity_checker, daemon=True).start()
 
 # entry point when running the app. Must be called at the end of the script
 if __name__ == '__main__':

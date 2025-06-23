@@ -38,14 +38,26 @@
 					<button @click="print">[[ printLable ]]</button>
 					<button @click="pause">[[ pauseLable ]]</button>
 				</div>
-                                <div id="test">
-                                        <p>We are on Layer:</p>
-                                        <input v-model="layer" placeholder="" disabled>
-                                </div>
-                                <div id="webhook">
-                                        <button @click="exposeWebhook">Expose Webhook</button>
-                                        <p v-if="webhookUrl">[[ webhookUrl ]]</p>
-                                </div>
+                <div id="test">
+                    <p>We are on Layer:</p>
+                    <input v-model="layer" placeholder="" disabled>
+                </div>
+				<p>Simulation time:</p>
+				<div class="center-point-buttons">
+    							<button
+									@click="slicer_options.simulation_time = Math.max(0, slicer_options.simulation_time - 1)"
+									type="button"
+								>-</button>
+								<span style="margin: 0 1em;">[[ slicer_options.simulation_time ]]</span>
+								<button
+									@click="slicer_options.simulation_time = slicer_options.simulation_time + 1"
+									type="button"
+								>+</button>
+				</div>
+                <div id="webhook">
+                    <button @click="exposeWebhook">Expose Webhook</button>
+                    <p v-if="webhookUrl">[[ webhookUrl ]]</p>
+                </div>
 			</div>
 			<div id="options">
 				<div>
