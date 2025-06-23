@@ -23,7 +23,7 @@ import json
 from skimage.io import imread
 import librosa
 import os
-from telegram_bot.handlers import openai_text_embedding, openai_text_scores, openai_image_scores
+from telegram_bot.handlers import openai_text_embedding, openai_text_scores, openai_image_scores, classify_audio
 
 class ParametersHandler():
     """
@@ -182,6 +182,9 @@ class ParametersHandler():
         #extract extra information from the audio, such as average loudness
         rms = librosa.feature.rms(y=y) # Root Mean Square Energy loudness of the audio
         print("audio loudnes: " + str(rms.mean()))
+        #classify the sound. For all the possible audio classes see sound_classes.txt in the same folder
+        sound_class = classify_audio(auid_file)
+        print("audio file is the sound of " + sound_class)
 
     def set_parameters_locationInput(self,location):
         """
@@ -224,11 +227,11 @@ class ParametersHandler():
             ai_text (str): The AI's response text.
         """
         self.accumulated_chat += " " + user_text + " " + ai_text
-        if len(self.accumulated_chat) > 800: ## Limit the text to 1000 characters about 140 words
+        if len(self.accumulated_chat) > 500: ## Limit the text to 500 characters about 70 words
             self.accumulated_chat = self.accumulated_chat[-800:] 
             print("Text chat too long, truncating...")
         self.accumulated_user_text += " " + user_text
-        if len(self.accumulated_user_text) > 300: ## Limit the text to 1000 characters about 140 words
+        if len(self.accumulated_user_text) > 200: ## Limit the text to 200 characters about 20 words
             self.accumulated_user_text = self.accumulated_user_text[-300:] 
             print("Text user too long, truncating...")
 

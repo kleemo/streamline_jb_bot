@@ -13,7 +13,7 @@ import shapehandler
 import slicerhandler
 import point_calc as pc
 
-from telegram_bot.handlers import send_message_to_telegram, fetch_file, get_openai_response, download_file, analyze_image_with_openai, TELEGRAM_API_URL, get_audio_response
+from telegram_bot.handlers import send_message_to_telegram, fetch_file, get_openai_response, download_file, get_openai_img_response, TELEGRAM_API_URL, get_audio_response
 from pyngrok import ngrok
 import requests
 import telegram_bot.parametershandler
@@ -63,7 +63,7 @@ def telegram_webhook():
         chat_id = update['message']['chat']['id']
         last_chat_id = chat_id
         parameter_handler.increase_input()
-        chat_activity += 1
+        chat_activity = 1
 
         if "text" in update["message"]:
             text = update['message']['text']
@@ -83,7 +83,7 @@ def telegram_webhook():
             photo_sizes = update["message"]["photo"]  # List of photo sizes
             file_id = photo_sizes[-1]["file_id"]
             image_url = fetch_file(file_id)
-            ai_response = analyze_image_with_openai(image_url)
+            ai_response = get_openai_img_response(image_url)
             parameter_handler.add_text("",ai_response)
             parameter_handler.set_parameters_imgInput(image_url=image_url)
 
@@ -132,9 +132,10 @@ def hello():
 def inactivity_checker():
     global chat_activity, webhook_exposed, parameter_handler, last_chat_id
     while True:
-        time.sleep(60)  # Check every 60 seconds
+        time.sleep(90)  # Check every 60 seconds
         chat_activity -= 1
-        if webhook_exposed and chat_activity <= 0:
+        random_probality = random.random()
+        if webhook_exposed and chat_activity <= 0 and random_probality < 0.7:
             # Get the last chat_id
             if last_chat_id > 0:
                 ai_response = get_openai_response("Send a message to re-engage the user after inactivity.")
