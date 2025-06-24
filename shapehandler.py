@@ -173,9 +173,9 @@ class Shapehandler:
         points = []
         # Define the vertices of the triangle
         vertices = [
-            pc.point(cx, cy + self.current_diameter[1] / 2, 0),  # Top vertex
-            pc.point(cx - self.current_diameter[0] / 2, cy - dx/ 2, 0),  # Bottom left vertex
-            pc.point(cx + self.current_diameter[0] / 2, cy - dy / 2, 0)   # Bottom right vertex
+            pc.point(cx, cy + dy / 2, 0),  # Top vertex
+            pc.point(cx - dx / 2, cy - dx/ 2, 0),  # Bottom left vertex
+            pc.point(cx + dx / 2, cy - dy / 2, 0)   # Bottom right vertex
         ]
         guide_points = vertices#ordered_vertices
         guide_points.append(vertices[0])
@@ -230,8 +230,8 @@ class Shapehandler:
                 points.append(new_point + (perpendicular * displacement[(i*num_points)+j][1]) + (direction * displacement[(i*num_points)+j][0]))
                 #insert glitch if appropriate
                 if self.line_options["glitch"] == "mesh" and glitch_prob > 0.7 and j== glitch_pos_j and i== glitch_pos_i:
-                    points.append(new_point + perpendicular*-10)
-                    points.append(new_point + perpendicular*-10 + direction*5)
+                    points.append(new_point + perpendicular*10)
+                    points.append(new_point + perpendicular*10 + direction*5)
                     
         points.append(points[0])  # Close the rectangle by adding the first point again
 
@@ -271,6 +271,20 @@ class Shapehandler:
             y = height* np.sin(angle)
             points.append([x,y])
         return points
+    def generate_nobs(self,num_points,height):
+        points = []
+        index = 0
+        if self.current_layer%2 == 0:
+            index = int(num_points/2)
+        for i in range(num_points):
+            if i == index:
+                if self.shape_options["base_shape"] == "circle" or self.shape_options["base_shape"] == "freehand":
+                    points.append([-1,height])
+                else:
+                    points.append([-1,-height])
+            else:
+                points.append([0,0])
+        return points
     
     def generate_path(self):
          displacement = []
@@ -292,6 +306,8 @@ class Shapehandler:
                     guides = self.generate_zigzag(bundle_size,h)
                 if pattern == "wav":
                     guides = self.generate_wave(bundle_size,h)
+                if pattern == "nobs":
+                    guides = self.generate_nobs(bundle_size,h)
             goal = (0,0)
             if pattern == "str":
                 goal = (0,0)
@@ -305,7 +321,9 @@ class Shapehandler:
 
             if len(self.previous_vector) < resolution:
                 displacement.append(goal)
-                self.previous_vector.append(goal) 
+                self.previous_vector.append(goal)
+            elif pattern == "nobs":
+                displacement.append(goal) 
             else:
                 vector = pc.normalize(pc.vector(np.array(self.previous_vector[idx]),np.array(goal)))#(goal[0] - self.previous_vector[i][0], goal[1] - self.previous_vector[i][1])
                 # Multiply the vector by a factor (e.g., 0.1)
@@ -499,6 +517,8 @@ class Shapehandler:
                     guides = self.generate_zigzag(bundle_size,h)
                 if pattern == "wav":
                     guides = self.generate_wave(bundle_size,h)
+                if pattern == "nobs":
+                    guides = self.generate_nobs(bundle_size,h)
             goal = (0,0)
             if pattern == "str":
                 goal = (0,0)

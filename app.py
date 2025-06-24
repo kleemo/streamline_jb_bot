@@ -135,7 +135,7 @@ def inactivity_checker():
         time.sleep(90)  # Check every 60 seconds
         chat_activity -= 1
         random_probality = random.random()
-        if webhook_exposed and chat_activity <= 0 and random_probality < 0.7:
+        if webhook_exposed and chat_activity < 0 and random_probality < 0.7:
             # Get the last chat_id
             if last_chat_id > 0:
                 ai_response = get_openai_response("Send a message to re-engage the user after inactivity.")

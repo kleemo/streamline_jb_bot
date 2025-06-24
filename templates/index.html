@@ -84,7 +84,7 @@
 						<vue-range-slider :tooltip="null" :min="+1" :max="+6" :step="+1" ref="slider"
 							v-model="slicer_options.update_rate"></vue-range-slider>
 						<p>layer rotation: [[ shape_options.rotation ]]</p>
-						<vue-range-slider :tooltip="null" :min="+0" :max="+1" :step="+0.1" ref="slider"
+						<vue-range-slider :tooltip="null" :min="-1" :max="+1" :step="+0.1" ref="slider"
 							v-model="shape_options.rotation"></vue-range-slider>
 					</div>
 					<h4>Shape</h4>
@@ -204,7 +204,7 @@
 						<p>Pattern type:</p>
 						<div class="center-point-buttons">
     							<button
-        							v-for="n in ['tri', 'rect', 'circ', 'wav', 'str']"
+        							v-for="n in ['tri', 'rect', 'circ', 'wav', 'str', 'nobs']"
         							:key="n"
         							:class="{ selected: line_options.pattern === n }"
         							@click="line_options.pattern= n"
@@ -214,6 +214,7 @@
         							<span v-else-if="n === 'circ'">OOO</span>
 									<span v-else-if="n === 'wav'">~~~</span>
 									<span v-else-if="n === 'str'">---</span>
+									<span v-else-if="n === 'nobs'">nobs</span>
 								</button>
 						</div>
 						<p>Amplitude: [[ line_options.amplitude ]]</p>
