@@ -2,7 +2,7 @@
 This project builds upon the existing work Streamlines of Otherness https://freeradicals.io/projects/streamlines-of-otherness/ and is realized in collaboration with Joelle Bitton.
 The application allows the user to generate 3D printed clay objects by interacting with a Telegram chatbot.
 
- Table of Contents
+ ## Table of Contents
 - [Technology Stack](#technology-stack)
   - [Backend](#backend)
   - [Webhook](#webhook)
