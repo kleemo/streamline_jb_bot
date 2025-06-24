@@ -525,7 +525,7 @@ class Shapehandler:
                 displacement.append(goal)
                 self.previous_z_vector.append(goal)
             else:
-                vector = (goal - self.previous_z_vector[i])/10
+                vector = (goal - self.previous_z_vector[i])*0.1
                 # Multiply the vector by a factor (e.g., 0.1)
                 scaled_vector = self.line_options["transition_rate"] * vector
                 if abs(scaled_vector) < self.line_options["transition_rate"]/2:
