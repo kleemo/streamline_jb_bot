@@ -93,6 +93,18 @@
 							<p>Transition rate (for diameter only): [[ shape_options.transition_rate ]]</p>
 							<vue-range-slider :tooltip="null" :min="+0.5" :max="+2" :step="+0.1" ref="slider"
 							v-model="shape_options.transition_rate"></vue-range-slider>
+							<p>non-planar:</p>
+							<div class="center-point-buttons">
+    							<button
+        							v-for="n in ['yes', 'no']"
+        							:key="n"
+        							:class="{ selected: shape_options.non_planar === n }"
+        							@click="shape_options.non_planar= n"
+        							type="button"
+    								><span v-if="n === 'no'">no</span>
+        							<span v-else-if="n === 'yes'">yes</span>
+								</button>
+							</div>
 							<p>base:</p>
 							<div class="center-point-buttons">
     							<button

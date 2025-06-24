@@ -44,6 +44,7 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             clip_end:0,
             rotation:0,
             free_hand_form:[],
+            non_planar: "no"
         },
         current_shape: {
             center_points: [[-40,50], [40,5],[-40,-30],[-30,20]],

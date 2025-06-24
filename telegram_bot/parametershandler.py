@@ -63,6 +63,7 @@ class ParametersHandler():
             "growth_directions": [(-40,50), (40,5),(-40,-30),(-30,20),(-10,-30)],
             "repetitions": 1,
             "free_hand_form":[],
+            "non_planar":"no"
         }
         self.line_options = {
             "pattern_range": 60,

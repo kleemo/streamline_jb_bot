@@ -197,6 +197,7 @@ def shape_options(data):
     parameter_handler.shape_options["transition_rate"] = data["transition_rate"]
     parameter_handler.shape_options["rotation"] = data["rotation"]
     parameter_handler.shape_options["free_hand_form"] = data["free_hand_form"]
+    parameter_handler.shape_options["non_planar"] = data["non_planar"]
 
     parameter_handler.filling = data["filling"]
     parameter_handler.clip_fill_start = data["clip_start"]

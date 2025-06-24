@@ -16,6 +16,7 @@ class Shapehandler:
         self.current_rotation = 0
         self.current_diameter = []
         self.previous_vector = [] #for line pattern transition
+        self.previous_z_vector = [] #for non planar print
         self.previous_shapes = [] #for layer repeat
         self.current_layer = 0 
         self.infill_cache = {}  # key: index, value: {'polygon': polygon, 'infill': infill_points}
@@ -29,6 +30,7 @@ class Shapehandler:
             "growth_directions": [],
             "repetitions": 1,
             "free_hand_form":[],
+            "non_planar": "no"
         }
         self.line_options = {
             "pattern_range": 60,
@@ -67,6 +69,7 @@ class Shapehandler:
         self.shape_options["growth_directions"] = shape_parameters["growth_directions"]
         self.shape_options["transition_rate"] = shape_parameters["transition_rate"]
         self.shape_options["free_hand_form"] = shape_parameters["free_hand_form"]
+        self.shape_options["non_planar"] = shape_parameters["non_planar"]
 
         self.line_options["pattern"] = line_parameters["pattern"]
         self.line_options["amplitude"] = line_parameters["amplitude"]
@@ -385,11 +388,11 @@ class Shapehandler:
         #center_of_mass_y = sum(point[1] for point in self.shape_options["center_points"]) / len(self.shape_options["center_points"])
         for i in range(len(shapes)):
             points = shapes[i]
+            z_displacement = self.generate_z_displacement()
             for j in range(len(points)):
-                r = points[j][2]
-                points[j][2] = float(0)
                 points[j] = pc.rotate(points[j],pc.point(self.shape_options["center_points"][i][0],self.shape_options["center_points"][i][1],0) , self.current_rotation)
-                points[j][2] = r
+                if j < len(z_displacement):
+                    points[j][2] = z_displacement[j]
             
         self.previous_shapes = shapes
         return shapes
@@ -495,6 +498,44 @@ class Shapehandler:
                 return infill_points[clip_start:]
             else:
                 return []
+            
+    def z_wave(self,num_points,h):
+        points = []
+        if self.current_layer < 2:
+            h = 1
+        for i in range(num_points):
+            angle =  (2 * np.pi * i) / num_points
+            z = h* np.sin(angle)
+            points.append(z)
+        return points
+
+            
+    def generate_z_displacement(self):
+         displacement = []
+         resolution = self.line_options["resolution"]
+         for i in range(resolution):
+            bundle_size = LINE_CONST*20
+            guides = self.z_wave(bundle_size,10)
+            goal = 0
+            if  self.shape_options["non_planar"] == "yes":
+                z = guides[i%bundle_size]
+                goal = z
+
+            if len(self.previous_z_vector) < resolution:
+                displacement.append(goal)
+                self.previous_z_vector.append(goal)
+            else:
+                vector = (goal - self.previous_z_vector[i])/10
+                # Multiply the vector by a factor (e.g., 0.1)
+                scaled_vector = self.line_options["transition_rate"] * vector
+                if abs(scaled_vector) < self.line_options["transition_rate"]/2:
+                    scaled_vector = 0
+                new_displacement = self.previous_z_vector[i] + scaled_vector
+                if abs(new_displacement) < self.line_options["transition_rate"]/2:
+                    new_displacement = 0
+                displacement.append(new_displacement)
+                self.previous_z_vector[i] = new_displacement
+         return displacement
     
 #functions to draw realistic UI preview 
 

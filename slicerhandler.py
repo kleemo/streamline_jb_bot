@@ -49,16 +49,26 @@ class Slicerhandler:
             point_next = points[(i + 1) % (len(points))]
             x = point_next[0]
             y = point_next[1]
+            z = point_next[2]
             distance = pc.distance(point, point_next)
             # Check if the distance is below the threshold
             if distance < max_distance:  # Example threshold: 10 units
                 gcode.append("G92 E0")
-                gcode.append(
-                    "G1 X" + str(x) +
-                    " Y" + str(y) +
-                    " E" + str(distance * self.params['extrusion_rate']) +
-                    " F" + str(self.params['feed_rate'])
-                )
+                if z <= 0:
+                    gcode.append(
+                        "G1 X" + str(x) +
+                        " Y" + str(y) +
+                        " E" + str(distance * self.params['extrusion_rate']) +
+                        " F" + str(self.params['feed_rate'])
+                    )
+                else:
+                    gcode.append(
+                        "G1 Z" + str(height + 49.25 + z) +
+                        " X" + str(x) +
+                        " Y" + str(y) +
+                        " E" + str(distance * self.params['extrusion_rate']) +
+                        " F" + str(self.params['feed_rate'])
+                    )
             else:
                 # Move without extrusion
                 gcode.append(
