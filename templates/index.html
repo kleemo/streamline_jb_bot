@@ -53,7 +53,7 @@
 								@click="slicer_options.simulation_time = Math.max(0, slicer_options.simulation_time - 1)"
 								type="button"
 							>-</button>
-							<span>[[ slicer_options.simulation_time ]]</span>
+							<span>[[ slicer_options.simulation_time ]]s</span>
 							<button
 								@click="slicer_options.simulation_time = slicer_options.simulation_time + 1"
 								type="button"
@@ -353,9 +353,9 @@
 				<div class="section">
 					<h2>AI Scores</h2>
 					<div style="display: flex; gap: 1em;">
-						<p>motivation_score: [[ai_scores.motivation_score]]</p>
-    					<p>complexity_score: [[ai_scores.complexity_score]]</p>
-						<p>coherence_score: [[ai_scores.coherence_score]]</p>
+						<div v-for="(value, key) in ai_scores" :key="key">
+							<p>[[key]] : [[value]]</p>
+						</div>
 					</div>
 				</div>
 				

@@ -3,6 +3,7 @@ This project builds upon the existing work Streamlines of Otherness https://free
 The application allows the user to generate 3D printed clay objects by interacting with a Telegram chatbot.
 
  ## Table of Contents
+- [Overview](#overview)
 - [Technology Stack](#technology-stack)
   - [Backend](#backend)
   - [Webhook](#webhook)
@@ -11,13 +12,14 @@ The application allows the user to generate 3D printed clay objects by interacti
 - [3D Simulation](#3d-simulation)
 - [Setup](#setup)
   - [Environment variables](#environment-variables)
-  - [Create environment and install requierements](#create-environment-and-install-requierements)
+  - [Create environment and install requirements](#create-environment-and-install-requirements)
 - [AI Scores](#ai-scores)
   - [Supported Scores](#supported-scores)
   - [Adding Custom Scores](#adding-custom-scores)
   - [Mapping AI Scores to Printing Parameters](#mapping-ai-scores-to-printing-parameters)
 - [Printing Parameters](#printing-parameters)
   - [General Settings](#general-settings)
+- [Geometry Taxonomy](#geometry-taxonomy)
   - [Shape Parameters](#shape-parameters)
   - [Line Parameters](#line-parameters)
 - [Telegram Bot](#telegram-bot)

@@ -18,11 +18,7 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         port: 'COM3',
         baud: '115200',
         webhookUrl: '',
-        ai_scores:{
-            motivation_score: 0,
-            complexity_score: 0,
-            coherence_score: 0,
-        },
+        ai_scores:{},
         slicer_options: {
             extrusion_rate: 0,
             feed_rate: 0,

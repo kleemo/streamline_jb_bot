@@ -6,6 +6,7 @@ import tensorflow as tf
 import tensorflow_hub as hub
 import numpy as np
 import librosa
+import json
 
 # --- Model and Class Names Initialization ---
 
@@ -18,7 +19,6 @@ class_map_path = tf.keras.utils.get_file(
     'yamnet_class_map.csv',
     'https://raw.githubusercontent.com/tensorflow/models/master/research/audioset/yamnet/yamnet_class_map.csv'
 )
-
 import csv
 class_names = []
 with open(class_map_path, 'r') as f:
@@ -26,6 +26,12 @@ with open(class_map_path, 'r') as f:
     next(reader)  # skip header
     for row in reader:
         class_names.append(row[2])  # Display name column
+# --- Load scoring schema for text and image---
+with open(os.path.join(os.path.dirname(__file__), "ai_scores.json"), "r", encoding="utf-8") as f:
+    scoring_schema = json.load(f)
+    text_scores_schema = scoring_schema.get("text_scores", {})
+    image_scores_schema = scoring_schema.get("image_scores", {})
+    location_scores_schema = scoring_schema.get("location_scores", {})
 
 # --- Environment Variables and API Setup ---
 
@@ -222,126 +228,150 @@ def openai_text_embedding(user_msg): #at the moment not in use
         )
     embedding = response.data[0].embedding
     return embedding
-  
 
 def openai_text_scores(user_msg, chat_history):
     """
-    Scores a user message on psychological-linguistic dimensions and contextual coherence.
-
-    Args:
-        user_msg (str): The user's message.
-        chat_history (str): The conversation history (excluding the current user_msg).
-
-    Returns:
-        tuple: (scores_json, coherence_score)
+    Scores a user message on psychological-linguistic dimensions and contextual coherence,
+    as described in ai_scores.json.
     """
-    prompt = f"""
-    You are evaluating a user message on three psychological-linguistic dimensions. For each, assign a float score between 0.0 and 1.0, where:
+    results = {}
+    for score_name, score_info in text_scores_schema.items():
+        if score_info["type"] == "numeric":
+            prompt = f"""
+            {score_info['description']}
+            Chat history:
+            \"\"\"{chat_history}\"\"\"
+            User message:
+            \"\"\"{user_msg}\"\"\"
+            Respond only with a float between 0 and 1. Only the number.
+            """
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.2
+            )
+            value = response.choices[0].message.content.strip()
+            try:
+                results[score_name] = float(value)
+            except ValueError:
+                results[score_name] = None  # fallback if parsing fails
 
-    - 0.0 = Extremely low
-    - 0.5 = Moderate/neutral
-    - 1.0 = Extremely high
-
-    **Please assess:**
-
-    1. **Cognitive Complexity**: how complex is the interaction with the chat bot. is the user asking questions, bantering, looking for help, guidance or a mirroring/echo, able to provoke compelling answers, referential, etc... 
-    2. **Social/Power Dynamics**: Is the speaker assertive, deferential, polite, commanding, or hedging? Consider modal verbs ("could, might"), hedging ("I think, maybe"), or direct language ("Do this now").
-    3. **Intent / Motivational Force**: How strong is the drive or purpose in the message? Are there persuasive tactics, emotional appeals, speculative prompts, or storytelling?
-
-    Respond in this format:
-        
-        {{
-            "complexity": "<complexity_score>",
-            "social dynamics": "<dynamics_score>",
-            "motivational force": "<motivation_score>"
-        }}
-
-    Message:
-    \"\"\"{chat_history + " " + user_msg}\"\"\"
-    """
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.2  # for consistent classification
-    )
-    scores = response.choices[0].message.content.strip().lower()
-    prompt = f"""
-    Given the following user message and chat history assign a contextual coherence score, ranging from 0 to 1.
-    Mesuring how well the latest user message fits within the ongoing conversation. If the user suddenly changes the topic or introduces something unrelated, the score should be low.
-
-    Respond with the float value only.
-    User Message:
-    \"\"\"{user_msg}\"\"\"
-    Chat History:
-    \"\"\"{chat_history}\"\"\"
-    """
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.2  # for consistent classification
-    )
-    coherence_score = float(response.choices[0].message.content.strip().lower())
-    # Strip Markdown-style code block formatting if present
-    if scores.startswith("```") and scores.endswith("```"):
-        scores = scores.strip("```").strip()
-        # Remove the "json" label if it exists
-        if scores.startswith("json"):
-            scores = scores[4:].strip()
-        # Strip whitespace and validate JSON format
-    scores = scores.strip()
-    if not scores.startswith("{") or not scores.endswith("}"):
-        print("Error: AI response is not valid JSON.") 
-
-    return scores, coherence_score
+        elif score_info["type"] == "categorical":
+            categories = ", ".join(score_info["categories"])
+            prompt = f"""
+            {score_info['description']}
+            Categories: {categories}
+            Chat history:
+            \"\"\"{chat_history}\"\"\"
+            User message:
+            \"\"\"{user_msg}\"""
+            Respond only with a list of the most fitting categories (as a Python list).
+            """
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.2
+            )
+            value = response.choices[0].message.content.strip()
+            # Clean up code block formatting if present
+            if value.startswith("```"):
+                value = value.strip("`")  # Remove all backticks
+                # Remove language tag if present (e.g., "python\n")
+                if value.startswith("python"):
+                    value = value[len("python"):].strip()
+            value = value.strip()
+            # Try to parse as a Python list
+            try:
+                parsed = eval(value, {"__builtins__": {}})
+                if isinstance(parsed, list):
+                    results[score_name] = parsed
+                else:
+                    results[score_name] = [value]
+            except Exception:
+                results[score_name] = [value]
+    return results
 
 def openai_image_scores(image_url):
     """
-    Scores an image on complexity, social/power dynamics, and motivational force.
-
-    Args:
-        image_url (str): The URL of the image.
-
-    Returns:
-        str: JSON string with the three scores.
+    Scores an image using the schema in ai_scores.json (image_scores).
+    Returns a dict of scores/categories.
     """
+    results = {}
+    for score_name, score_info in image_scores_schema.items():
+        if score_info["type"] == "numeric":
+            prompt = f"""
+            {score_info['description']}
+            Respond only with a float between 0 and 1. Only the number.
+            """
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "user", "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": image_url}}
+                    ]}
+                ],
+                temperature=0.2
+            )
+            value = response.choices[0].message.content.strip()
+            try:
+                results[score_name] = float(value)
+            except ValueError:
+                results[score_name] = None
 
-    prompt = f"""
-    Evaluate the image using these three scores (from 0 to 1) : 
-    - Complexity: Messures content richness. How much meaningful or detectable content is in the image? factors include; number of objects, color variety, depth of field.
-    - Social/Power dynamics: How much does the image reflect power relationships, social status, assertiveness, or deference? Factors inlcude; body language (e.g., pointing, arms crossed, looking down), eye contact, posture, proximity between people, clothing/uniforms (suggesting authority, submission, etc.), status cues (wealth, group dynamics, stage presence)
-    - Intent/Motivational force: How much is the image trying to motivate, persuade, provoke, or inspire action or emotion? Factors include; presence of call-to-action elements (e.g., signs, banners), expressive body language (raised fists, cheering, praying), strong emotion or symbolic use (e.g., protest, activism, ads), clear narrative visual structure (like a story told in a single frame)
+        elif score_info["type"] == "categorical":
+            categories = ", ".join(score_info["categories"])
+            prompt = f"""
+            {score_info['description']}
+            Categories: {categories}
+            Respond only with a list of the most fitting categories (as a Python list).
+            """
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "user", "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": image_url}}
+                    ]}
+                ],
+                temperature=0.2
+            )
+            value = response.choices[0].message.content.strip()
+            # Clean up code block formatting if present
+            if value.startswith("```"):
+                value = value.strip("`")
+                if value.startswith("python"):
+                    value = value[len("python"):].strip()
+            value = value.strip()
+            results[score_name] = value
+    return results
 
-    Respond in this format:
-        
-        {{
-            "complexity": "<complexity_score>",
-            "social dynamics": "<dynamics_score>",
-            "motivational force": "<motivation_score>"
-        }}
+def openai_location_scores(latitude, longitude):
     """
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "user", "content":[
-                {"type": "text", "text": prompt},
-                {"type": "image_url", "image_url": {"url": image_url}}]
-            }
-        ],
-        temperature=0.2  # for consistent classification
-    )
-    scores = response.choices[0].message.content.strip().lower()
-    # Strip Markdown-style code block formatting if present
-    if scores.startswith("```") and scores.endswith("```"):
-        scores = scores.strip("```").strip()
-        # Remove the "json" label if it exists
-        if scores.startswith("json"):
-            scores = scores[4:].strip()
-        # Strip whitespace and validate JSON format
-    scores = scores.strip()
-    if not scores.startswith("{") or not scores.endswith("}"):
-        print("Error: AI response is not valid JSON.") 
-    return scores
+    Scores a location using the schema in ai_scores.json (location_scores).
+    Returns a dict of scores/categories.
+    """
+    results = {}
+    for score_name, score_info in location_scores_schema.items():
+        if score_info["type"] == "categorical":
+            categories = ", ".join(score_info["categories"])
+            prompt = f"""
+            {score_info['description']}
+            Categories: {categories}
+            User coordinates: ({latitude}, {longitude})
+            Respond only with a list of the most fitting category (as a Python list).
+            """
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.2
+            )
+            value = response.choices[0].message.content.strip()
+            # Clean up code block formatting if present
+            if value.startswith("```"):
+                value = value.strip("`")
+                if value.startswith("python"):
+                    value = value[len("python"):].strip()
+            value = value.strip()
+            results[score_name] = value
+    return results

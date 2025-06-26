@@ -23,7 +23,7 @@ import json
 from skimage.io import imread
 import librosa
 import os
-from telegram_bot.handlers import openai_text_embedding, openai_text_scores, openai_image_scores, classify_audio
+from telegram_bot.handlers import openai_text_embedding, openai_text_scores, openai_image_scores, classify_audio, openai_location_scores
 
 class ParametersHandler():
     """
@@ -75,11 +75,7 @@ class ParametersHandler():
             "irregularity":0,
             "glitch": "none"
         }
-        self.ai_scores = {
-            "motivation_score": 0,
-            "complexity_score": 0,
-            "coherence_score": 0,
-        }
+        self.ai_scores = {}
 
     def get_parameters(self):
         """
@@ -99,37 +95,21 @@ class ParametersHandler():
         Args:
             user_text (str, optional): The user's input text.
         """
-        # Default scores if ai fails
-        motivation_score = 0.5  
-        dynamics_score = 0.5
-        complexity_score = 0.5
-        coherence_score = 0.5
-        scores = "" #variable to store the scores the ai returns
-        #get scores from ai model
-        if user_text != None:
-            scores, coherence = openai_text_scores(user_text, self.accumulated_chat)
-            if self.accumulated_user_text == "":
-                coherence_score = 0.5
-            else:
-                coherence_score = coherence
-        # extract the individual scores from the scores object 
-        try:
-            scores = json.loads(scores)  # Parse the JSON string into a Python dictionary
-            motivation_score = float(scores.get("motivational force", 0.5))
-            dynamics_score = float(scores.get("social dynamics", 0.5))
-            complexity_score = float(scores.get("complexity", 0.5))
-        except json.JSONDecodeError as e:
-            print(f"Error parsing AI response: {e}")
+        # Get scores from ai model
+        scores = openai_text_scores(user_text, self.accumulated_chat)
+        # scores is now a dictionary
+        coherence_score = float(scores.get("coherence", 0.5)) #second argumetn i.e. 0.5 is the default value if it fails to read
+        complexity_score = float(scores.get("cognitive_complexity", 0.5))
+        user_perception = scores.get("user_perception", [])
+        user_demeanor = scores.get("user_demeanor", [])
 
         #assign the ai scores to a corresponding line parameter
-        self.line_options["amplitude"] = int(self.map_parameter_to_range(motivation_score, 1, 20, 0, 1))
         self.line_options["frequency"] = int(4 - int(self.map_parameter_to_range(complexity_score, 0, 3, 0, 1)))
         self.line_options["pattern_range"] = int(self.map_parameter_to_range(coherence_score, 0, 50, 0, 1))
 
         #update the ai scores to display in the UI
-        self.ai_scores["motivation_score"] = motivation_score
-        self.ai_scores["complexity_score"] = complexity_score
-        self.ai_scores["coherence_score"] = coherence_score
+        for key in scores:
+            self.ai_scores[key] = scores[key]
 
     def set_parameters_imgInput(self, image_url=None):
         """
@@ -138,34 +118,19 @@ class ParametersHandler():
         Args:
             image_url (str, optional): Path or URL to the image file.
         """
-        # Default scores if ai fails
-        motivation_score = 0.5  
-        dynamics_score = 0.5
-        complexity_score = 0.5
-        scores = "" #variable to store the scores the ai returns
-        img = None#variable to store a pixel map of the image
         #get scores from ai model
-        if image_url != None:
-            scores = openai_image_scores(image_url)
-            img = imread(image_url, as_gray=True)
+        scores = openai_image_scores(image_url)
+        img = imread(image_url, as_gray=True)
         # extract the individual scores from the scores object 
-        try:
-            scores = json.loads(scores)  # Parse the JSON string into a Python dictionary
-            motivation_score = float(scores.get("motivational force", 0.5))
-            dynamics_score = float(scores.get("social dynamics", 0.5))
-            complexity_score = float(scores.get("complexity", 0.5))
-        except json.JSONDecodeError as e:
-            print(f"Error parsing AI response: {e}")
+        image_category = scores.get("image_category", "none")#second argument default value if not possible to read
         #extract extra information from the image, such as average brightness (pixel intensity ranges from 0 to 1)
         avg_brightness = np.mean(img)
         median_brightness = np.median(img)
         #assign the ai scores to a corresponding line parameter
-        self.line_options["amplitude"] = int(self.map_parameter_to_range(motivation_score, 1, 20, 0, 1))
-        self.line_options["frequency"] = int(4 - int(self.map_parameter_to_range(complexity_score, 0, 3, 0, 1)))
 
         #update the ai scores to display in the UI
-        self.ai_scores["motivation_score"] = motivation_score
-        self.ai_scores["complexity_score"] = complexity_score
+        for key in scores:
+            self.ai_scores[key] = scores[key]
     
     def set_parameters_audioInput(self,auid_file=None):
         """
@@ -185,7 +150,8 @@ class ParametersHandler():
         print("audio loudnes: " + str(rms.mean()))
         #classify the sound. For all the possible audio classes see sound_classes.txt in the same folder
         sound_class = classify_audio(auid_file)
-        print("audio file is the sound of " + sound_class)
+        #update the ai scores to display in the UI
+        self.ai_scores["sound category"] = sound_class
 
     def set_parameters_locationInput(self,location):
         """
@@ -198,6 +164,13 @@ class ParametersHandler():
         #extract information from location
         long= location["longitude"]
         lat = location["latitude"]
+        #get scores from ai model
+        scores = openai_location_scores(lat,long)
+        location_category = scores.get("location_category", "none")#second argument default value if not possible to read
+
+        #update the ai scores to display in the UI
+        for key in scores:
+            self.ai_scores[key] = scores[key]
 
     def increase_input(self):
         """

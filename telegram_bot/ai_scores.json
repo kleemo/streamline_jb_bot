@@ -1,0 +1,36 @@
+{
+    "text_scores":{
+        "coherence":{
+            "description": "Given the following user message and chat history assign a contextual coherence score, ranging from 0 to 1. Mesuring how well the latest user message fits within the ongoing conversation. If the user suddenly changes the topic or introduces something unrelated, the score should be low.",
+            "type": "numeric"
+        },
+        "cognitive_complexity":{
+            "description": "how complex is the interaction with the chat bot. is the user asking questions, bantering, looking for help, guidance or a mirroring/echo, able to provoke compelling answers, referential, etc... Assign a score ranging from 0 to 1",
+            "type": "numeric"
+        },
+        "user_perception":{
+            "description": "given the following chat conversation and categories return the 2 most fitting categories. The returned categories should describe how the user sees/perceives the world and its place in it",
+            "type": "categorical",
+            "categories": ["colorful", "alert", "spiritual","learning","opportunities","hustle","grieving","adrift","lost","doomed","hateful"]
+        },
+        "user_demeanor":{
+            "description": "given the following chat conversation and categories return the 2 most fitting categories. The returned categories should describe the user's demeanor with ways of engagement",
+            "type": "categorical",
+            "categories": ["funny", "kind", "poetic","cheerful","contemplative","empathic","curious","explorative","creative","quirky","action-driven","pompous","shy","passive","distant","rude","aggressive"]
+        }
+    },
+    "image_scores":{
+        "image_category":{
+            "description": "given the following image and categories return the two most fitting ones",
+            "type": "categorical",
+            "categories": ["funny", "poetic","creative","quirky","gloomy","cheerful","calm","geometric","messy"]
+        }
+    },
+    "location_scores":{
+        "location_category":{
+            "description": "given the user coordinates return the category from the given list, that best fits the type of location.",
+            "type": "categorical",
+            "categories": ["urban", "water-side","forest","mountain","coast"]
+        }
+    }
+}

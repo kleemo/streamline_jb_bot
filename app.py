@@ -84,9 +84,8 @@ def telegram_webhook():
             file_id = photo_sizes[-1]["file_id"]
             image_url = fetch_file(file_id)
             ai_response = get_openai_img_response(image_url)
-            parameter_handler.add_text("",ai_response)
             parameter_handler.set_parameters_imgInput(image_url=image_url)
-
+            parameter_handler.add_text("user send image.",ai_response)
             send_message_to_telegram(chat_id,ai_response)
 
         if "location" in update["message"]:
@@ -94,6 +93,8 @@ def telegram_webhook():
             location_string = str(location["latitude"]) + " " + str(location["longitude"])
             parameter_handler.set_parameters_locationInput(location)
             ai_response = get_openai_response("user send location at " + location_string)
+            parameter_handler.set_parameters_locationInput(location)
+            parameter_handler.add_text("user send a location.",ai_response)
             send_message_to_telegram(chat_id, ai_response)
 
         if "voice" in update["message"]:
@@ -132,7 +133,7 @@ def hello():
 def inactivity_checker():
     global chat_activity, webhook_exposed, parameter_handler, last_chat_id
     while True:
-        time.sleep(90)  # Check every 60 seconds
+        time.sleep(60)  # Check every 60 seconds
         chat_activity -= 1
         random_probality = random.random()
         if webhook_exposed and chat_activity < 0 and random_probality < 0.7:
