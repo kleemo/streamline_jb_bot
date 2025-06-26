@@ -47,10 +47,10 @@ class Slicerhandler:
         while i < len(points) - 1:
             point = points[i]
             point_next = points[(i + 1) % (len(points))]
-            x = point_next[0]
-            y = point_next[1]
-            z = point_next[2]
-            distance = pc.distance(point, point_next)
+            x = round(point_next[0],2)
+            y = round(point_next[1],2)
+            z = round(point_next[2],2)
+            distance = round(pc.distance(point, point_next),4)
             # Check if the distance is below the threshold
             if distance < max_distance:  # Example threshold: 10 units
                 gcode.append("G92 E0")
@@ -107,7 +107,8 @@ class Slicerhandler:
         # start sequence to initiate the print
 
         gcode = []
-        gcode.append("G90")
+        gcode.append("G90 ")
+        #gcode.append("M82 ")
         # the following 2 lines are the likely the brim extrustion commands to get the material flowing
             #gcode.append("G1 X0 Y0 Z" + str(3)) #+ self.params['layer_hight']) alternative plate -12 #2.5 for printing on the extra plate
             #gcode.append("G1 X0 E1 F1000")

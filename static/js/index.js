@@ -42,10 +42,8 @@ socket.on('line_preview', (data) => {
 socket.on('webhook_url', (data) => {
     vm.webhookUrl = data.url
 });
-socket.on('visualize_infill', (data) => {
+socket.on('infill_preview', (data) => {
     vm.infill = data["infill"]
-    console.log("infill rec " + vm.infill[0])
-    console.log("infill rec l " + vm.infill.length)
 });
 
 // Listen for the trigger_print event and call the print function

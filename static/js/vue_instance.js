@@ -399,6 +399,14 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             ctx.moveTo(10*DRAWING_SCALING, canvas.height - 10*DRAWING_SCALING);
             ctx.lineTo(30*DRAWING_SCALING,canvas.height - 10*DRAWING_SCALING);
             ctx.stroke();
+
+             // Label "y" near the end of the vertical line
+            ctx.font = "16px Arial";
+            ctx.fillStyle = "blue";
+            ctx.fillText("y", 10*DRAWING_SCALING - 15, canvas.height - 30*DRAWING_SCALING + 5);
+
+            // Label "x" near the end of the horizontal line
+            ctx.fillText("x", 30*DRAWING_SCALING - 5, canvas.height - 10*DRAWING_SCALING - 10);
             
             ctx.beginPath()
             ctx.lineWidth = 0;

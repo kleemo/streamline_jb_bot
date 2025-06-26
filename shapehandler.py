@@ -144,7 +144,9 @@ class Shapehandler:
 
                     
         points.append(points[0])  # Close the rectangle by adding the first point again
-        # Add the last point to close the rectangle
+        if len(points) > 4: #retrace the begining of the shape twice for better closure
+            points.append(points[1])
+            points.append(points[2])
         return points
     
     def generate_circle(self,displacement, cx,cy,dx,dy):
@@ -169,7 +171,9 @@ class Shapehandler:
                 points.append(new_point + direction*10 + perpendicular*5)
            
         points.append(points[0])  # Close the circle by adding the first point again
-             
+        if len(points) > 4: #retrace the begining of the shape twice for better closure
+            points.append(points[1])
+            points.append(points[2])
         return points
     
     def generate_triangle(self, displacement, cx, cy,dx,dy):
@@ -204,6 +208,9 @@ class Shapehandler:
                     points.append(new_point + perpendicular*-10 + direction*5)
                     
         points.append(points[0])  # Close the rectangle by adding the first point again
+        if len(points) > 4: #retrace the begining of the shape twice for better closure
+            points.append(points[1])
+            points.append(points[2])
         # Add the last point to close the rectangle
         return points
     
@@ -237,6 +244,9 @@ class Shapehandler:
                     points.append(new_point + perpendicular*10 + direction*5)
                     
         points.append(points[0])  # Close the rectangle by adding the first point again
+        if len(points) > 4: #retrace the begining of the shape twice for better closure
+            points.append(points[1])
+            points.append(points[2])
 
         return points
     
@@ -318,7 +328,7 @@ class Shapehandler:
                 x = guides[i%bundle_size][0] 
                 y = guides[i%bundle_size][1] 
                 irregularity = self.line_options["irregularity"] * (self.irregularity_vector[i] * self.line_options["amplitude"])
-                if self.shape_options["base_shape"] == "circle":
+                if self.shape_options["base_shape"] == "circle" or self.shape_options["base_shape"] == "freehand":
                     irregularity *= -1
                 goal = (x,y + irregularity)
 
@@ -515,11 +525,12 @@ class Shapehandler:
          resolution = self.line_options["resolution"]
          for i in range(resolution):
             bundle_size = LINE_CONST*20
-            guides = self.z_wave(bundle_size,10)
-            goal = 0
+            guides = self.z_wave(bundle_size,8)
             if  self.shape_options["non_planar"] == "yes":
                 z = guides[i%bundle_size]
                 goal = z
+            else:
+                goal = 0
 
             if len(self.previous_z_vector) < resolution:
                 displacement.append(goal)
@@ -528,10 +539,10 @@ class Shapehandler:
                 vector = (goal - self.previous_z_vector[i])*0.1
                 # Multiply the vector by a factor (e.g., 0.1)
                 scaled_vector = self.line_options["transition_rate"] * vector
-                if abs(scaled_vector) < self.line_options["transition_rate"]/2:
+                if abs(scaled_vector) < self.line_options["transition_rate"]/20:
                     scaled_vector = 0
                 new_displacement = self.previous_z_vector[i] + scaled_vector
-                if abs(new_displacement) < self.line_options["transition_rate"]/2:
+                if abs(new_displacement) < self.line_options["transition_rate"]:
                     new_displacement = 0
                 displacement.append(new_displacement)
                 self.previous_z_vector[i] = new_displacement

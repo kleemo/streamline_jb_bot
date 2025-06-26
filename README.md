@@ -55,7 +55,11 @@ include text embedding vectors explenation (link)
 ## Mapping AI Scores to Printing Parameters
 
 # Printing Parameters
+start of the height depending on the plate
 ## General Settings
+
+# Geometry Taxonomy
+see google sheet for ref
 ## Shape Parameters
 ## Line Parameters
 

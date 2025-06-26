@@ -16,111 +16,154 @@
 
 <body>
 	<div id="vm">
-		<div id="header">
-			<h1 @click="connect" class="icon" v-if="connected">&#128077</h1>
-			<h1 @click="connect" class="icon" v-else>&#128078</h1>
-			<h1 id="port">PORT:</h1>
-			<input class="text-input" v-model="port">
-			<h1 id="baud">BAUD:</h1>
-			<input class="text-input" v-model="baud">
-		</div>
-		<div id="sidebar">
-			<div id="control">
-				<h2>Printer Controller</h2>
-				<div id="motion">
-					<div id="back" @click="move_up">&uarr;</div>
-					<div id="forth" @click="move_down">&darr;</div>
-					<!--<div id="left" @click="">&larr;</div>
-							<div id="right" @click="">&rarr;</div>-->
-				</div>
-				<div id="buttons">
+
+		<div id="main-container">
+
+			<div class="section" id="setup">
+				<h2>Setup</h2>
+				<div class="buttons">
 					<button @click="setup">New</button>
 					<button @click="print">[[ printLable ]]</button>
 					<button @click="pause">[[ pauseLable ]]</button>
 				</div>
-                <div id="test">
-                    <p>We are on Layer:</p>
-                    <input v-model="layer" placeholder="" disabled>
-                </div>
-				<p>Simulation time:</p>
-				<div class="center-point-buttons">
-    							<button
-									@click="slicer_options.simulation_time = Math.max(0, slicer_options.simulation_time - 1)"
-									type="button"
-								>-</button>
-								<span style="margin: 0 1em;">[[ slicer_options.simulation_time ]]</span>
-								<button
-									@click="slicer_options.simulation_time = slicer_options.simulation_time + 1"
-									type="button"
-								>+</button>
+				<div class="flex-row">
+					<div>
+						<p id="port">Port:</p>
+						<input class="text-input" v-model="port">
+					</div>
+					<div>
+						<p id="baud">Baud:</p>
+						<input class="text-input" v-model="baud">
+					</div>
+					<div>
+						<p>Connect:</p>
+						<h1 @click="connect" class="icon" v-if="connected">&#128077</h1>
+						<h1 @click="connect" class="icon" v-else>&#128078</h1>
+					</div>
 				</div>
-                <div id="webhook">
-                    <button @click="exposeWebhook">Expose Webhook</button>
-                    <p v-if="webhookUrl">[[ webhookUrl ]]</p>
-                </div>
-			</div>
-			<div id="options">
-				<div>
-					<div class="slicer">
-						<h4>Slicer</h4>
-						<p>E controls how much filament is extruded: [[ slicer_options.extrusion_rate ]]</p>
-						<!-- <input v-model="slicer_options.extrusion_rate" placeholder=""> -->
+				<div class="flex-row">
+					<div id="test">
+						<p>We are on Layer:</p>
+						<input v-model="layer" placeholder="" disabled>
+                	</div>
+					<div>
+						<p>Simulation time:</p>
+						<div class="buttons">
+							<button
+								@click="slicer_options.simulation_time = Math.max(0, slicer_options.simulation_time - 1)"
+								type="button"
+							>-</button>
+							<span>[[ slicer_options.simulation_time ]]</span>
+							<button
+								@click="slicer_options.simulation_time = slicer_options.simulation_time + 1"
+								type="button"
+								style="margin-left: 0.5em;"
+							>+</button>
+						</div>
+					</div>
+					<div>
+						<p>Connect to Telegram Bot:</p>
+						<div id="webhook">
+							<button @click="exposeWebhook">Expose Webhook</button>
+							<span v-if="webhookUrl" style="color: green;">connected</span>
+							<span v-else style="color: red;">disconnected</span>
+						</div>
+					</div>
+				</div>
+				<div class="flex-row">
+					<div>
+					<p>E controls how much filament is extruded: <span>[[ slicer_options.extrusion_rate ]]</span></p>
 						<vue-range-slider :tooltip="null" :min="+0" :max="+1" :step="+0.01" ref="slider"
 							v-model="slicer_options.extrusion_rate"></vue-range-slider>
-						<p>F controls how fast the move (and extrusion) happens: [[ slicer_options.feed_rate ]]</p>
+					</div>
+					<div>
+					<p>F controls how fast the move (and extrusion) happens: <span>[[ slicer_options.feed_rate ]]</span></p>
 						<vue-range-slider :tooltip="null" :min="+0" :max="+2000" step="+1" ref="slider"
 							v-model="slicer_options.feed_rate"></vue-range-slider>
-						
 					</div>
-					<div class="slicer">
-						<h4>Layer</h4>
-						<p>Layer Repeat: [[ shape_options.repetitions ]]</p>
+				</div>
+			</div>
+
+			<div class="section" id="layer">
+				<h2>Layer</h2>
+				<div class="flex-row">
+					<div>
+						<p>Layer Repeat: <span>[[ shape_options.repetitions ]]</span></p>
 						<vue-range-slider :tooltip="null" :min="+1" :max="+3" :step="+1" ref="slider"
 							v-model="shape_options.repetitions"></vue-range-slider>
-						<p>Layer Height: [[ slicer_options.layer_hight ]]</p>
+					</div>
+					<div>
+						<p>Layer Height: <span>[[ slicer_options.layer_hight ]]</span></p>
 						<vue-range-slider :tooltip="null" :min="+0.5" :max="+2.5" step="+0.25" ref="slider"
 							v-model="slicer_options.layer_hight"></vue-range-slider>
-						<p>Update rate (new parameters get set every [[ slicer_options.update_rate ]] layer)</p>
-						<vue-range-slider :tooltip="null" :min="+1" :max="+6" :step="+1" ref="slider"
-							v-model="slicer_options.update_rate"></vue-range-slider>
-						<p>layer rotation: [[ shape_options.rotation ]]</p>
+					</div>
+				</div>
+				<div class="flex-row">
+					<div>
+						<p>Transition rate (for diameter only): <span>[[ shape_options.transition_rate ]]</span></p>
+							<vue-range-slider :tooltip="null" :min="+0.5" :max="+2" :step="+0.1" ref="slider"
+							v-model="shape_options.transition_rate"></vue-range-slider>
+					</div>
+					<div>
+						<p>layer rotation: <span>[[ shape_options.rotation ]]</span></p>
 						<vue-range-slider :tooltip="null" :min="-1" :max="+1" :step="+0.1" ref="slider"
 							v-model="shape_options.rotation"></vue-range-slider>
 					</div>
-					<h4>Shape</h4>
-					<div class="shape-flex-row">	
+				</div>
+			</div>
+
+			<div class="section" id="shape">
+				<h2>Shape</h2>
+					<div class="flex-row">	
 						<div>
-							<p>Transition rate (for diameter only): [[ shape_options.transition_rate ]]</p>
-							<vue-range-slider :tooltip="null" :min="+0.5" :max="+2" :step="+0.1" ref="slider"
-							v-model="shape_options.transition_rate"></vue-range-slider>
-							<p>non-planar:</p>
-							<div class="center-point-buttons">
-    							<button
-        							v-for="n in ['yes', 'no']"
-        							:key="n"
-        							:class="{ selected: shape_options.non_planar === n }"
-        							@click="shape_options.non_planar= n"
-        							type="button"
-    								><span v-if="n === 'no'">no</span>
-        							<span v-else-if="n === 'yes'">yes</span>
-								</button>
+							<div class="flex-row">
+								<div>
+									<p>base:</p>
+									<div class="buttons">
+										<button
+											v-for="n in ['circle', 'rectangle', 'triangle', 'freehand']"
+											:key="n"
+											:class="{ selected: shape_options.base_shape === n }"
+											@click="shape_options.base_shape= n"
+											type="button"
+											><span v-if="n === 'circle'">&#9679;</span>
+											<span v-else-if="n === 'rectangle'">&#9645;</span>
+											<span v-else-if="n === 'triangle'">&#9650;</span>
+											<span v-else-if="n === 'freehand'">free hand</span>
+										</button>
+									</div>
+								</div>
+								<div>
+									<p>number of center points:</p>
+									<div class="buttons">
+										<button
+											@click="remove_center_point"
+											type="button"
+										>-</button>
+										<span>[[ shape_options.num_center_points ]]</span>
+										<button
+											@click="add_center_point"
+											type="button"
+											:disabled="printing"
+											style="margin-left: 0.5em;"
+										>+</button>
+									</div>
+								</div>
 							</div>
-							<p>base:</p>
-							<div class="center-point-buttons">
-    							<button
-        							v-for="n in ['circle', 'rectangle', 'triangle', 'freehand']"
-        							:key="n"
-        							:class="{ selected: shape_options.base_shape === n }"
-        							@click="shape_options.base_shape= n"
-        							type="button"
-    								><span v-if="n === 'circle'">&#9679;</span>
-        							<span v-else-if="n === 'rectangle'">&#9645;</span>
-        							<span v-else-if="n === 'triangle'">&#9650;</span>
-									<span v-else-if="n === 'freehand'">free hand</span>
-								</button>
+							<div class="flex-row">
+								<div>
+								<p>x-diameter: <span>[[ shape_options.diameter_x[selected_index] ]]</span></p>
+									<vue-range-slider class="small" :tooltip="null" :min="+1" :max="+200" :step="+1" ref="slider"
+									v-model="shape_options.diameter_x[selected_index]"></vue-range-slider>
+								</div>
+								<div>
+								<p>y-diameter: <span>[[ shape_options.diameter_y[selected_index] ]]</span></p>
+									<vue-range-slider class="small" :tooltip="null" :min="+1" :max="+200" :step="+1" ref="slider"
+									v-model="shape_options.diameter_y[selected_index]"></vue-range-slider>
+								</div>
 							</div>
 							<p>filling (spacing between fill lines):</p>
-							<div class="center-point-buttons">
+							<div class="buttons">
     							<button
         							v-for="n in [0,10,20,30]"
         							:key="n"
@@ -133,60 +176,68 @@
 									<span v-else-if="n === 30" style="white-space: pre">/  /  /</span>
 								</button>
 							</div>
-							<div style="display: flex; gap: 1em;">
-								<span>clip filling start:</span>
-								<button
-									@click="shape_options.clip_start = Math.max(0, shape_options.clip_start - 1)"
-									type="button"
-								>-</button>
-								<span style="min-width:2em; text-align:center;">[[ shape_options.clip_start ]]</span>
-								<button
-									@click="shape_options.clip_start = Math.min(500, shape_options.clip_start + 1)"
-									type="button"
-								>+</button>
-
-								<span>clip filling end:</span>
-								<button
-									@click="shape_options.clip_end = Math.max(0, shape_options.clip_end - 1)"
-									type="button"
-								>-</button>
-								<span style="min-width:2em; text-align:center;">[[ shape_options.clip_end ]]</span>
-								<button
-									@click="shape_options.clip_end = Math.min(500, shape_options.clip_end + 1)"
-									type="button"
-    							>+</button>
+							<div class="flex-row">
+								<div>
+									<p>clip filling start:</p>
+									<div class="buttons">
+									<button
+										@click="shape_options.clip_start = Math.max(0, shape_options.clip_start - 1)"
+										type="button"
+									>-</button>
+									<span style="min-width:2em; text-align:center;">[[ shape_options.clip_start ]]</span>
+									<button
+										@click="shape_options.clip_start = Math.min(500, shape_options.clip_start + 1)"
+										type="button"
+										style="margin-left: 0.5em;"
+									>+</button>
+									</div>
+								</div>
+								<div>
+									<p>clip filling end:</p>
+									<div class="buttons">
+									<button
+										@click="shape_options.clip_end = Math.max(0, shape_options.clip_end - 1)"
+										type="button"
+									>-</button>
+									<span style="min-width:2em; text-align:center;">[[ shape_options.clip_end ]]</span>
+									<button
+										@click="shape_options.clip_end = Math.min(500, shape_options.clip_end + 1)"
+										type="button"
+										style="margin-left: 0.5em;"
+									>+</button>
+									</div>
+								</div>
 							</div>
-							<p>outline:</p>
-							<div class="center-point-buttons">
-    							<button
-        							v-for="n in [true,false]"
-        							:key="n"
-        							:class="{ selected: outline === n }"
-        							@click="outline_toggle"
-        							type="button"
-    								><span v-if="n === true">yes</span>
-        							<span v-else-if="n === false">no</span>
-								</button>
+							<div class="flex-row">
+								<div>
+								<p>outline:</p>
+									<div class="buttons">
+										<button
+											v-for="n in [true,false]"
+											:key="n"
+											:class="{ selected: outline === n }"
+											@click="outline_toggle"
+											type="button"
+											><span v-if="n === true">yes</span>
+											<span v-else-if="n === false">no</span>
+										</button>
+									</div>
+								</div>
+								<div>
+									<p>non-planar:</p>
+									<div class="buttons">
+										<button
+											v-for="n in ['yes', 'no']"
+											:key="n"
+											:class="{ selected: shape_options.non_planar === n }"
+											@click="shape_options.non_planar= n"
+											type="button"
+											><span v-if="n === 'no'">no</span>
+											<span v-else-if="n === 'yes'">yes</span>
+										</button>
+									</div>
 							</div>
-							<p>number of center points:</p>
-							<div class="center-point-buttons">
-    							<button
-									@click="remove_center_point"
-									type="button"
-								>-</button>
-								<span style="margin: 0 1em;">[[ shape_options.num_center_points ]]</span>
-								<button
-									@click="add_center_point"
-									type="button"
-									:disabled="printing"
-								>+</button>
 							</div>
-							<p>x-diameter: [[ shape_options.diameter_x[selected_index] ]]</p>
-								<vue-range-slider :tooltip="null" :min="+1" :max="+300" :step="+1" ref="slider"
-								v-model="shape_options.diameter_x[selected_index]"></vue-range-slider>
-							<p>y-diameter: [[ shape_options.diameter_y[selected_index] ]]</p>
-								<vue-range-slider :tooltip="null" :min="+1" :max="+300" :step="+1" ref="slider"
-								v-model="shape_options.diameter_y[selected_index]"></vue-range-slider>
 						</div>
 						<div>
 							<canvas id="centerPointsCanvas" width="400" height="400" style="border:1px solid #757575; background-color: #969494;"></canvas>
@@ -200,86 +251,114 @@
 							<canvas @click="addVertex" id="freeHandShapeCanvas" width="400" height="400" style="border:1px solid #757575; background-color: #eaeaea;"></canvas>
 						</div>
 					</div>
-					<h4>Line</h4>
-					<div>
-						<p>Range to apply line pattern (in %): [[ line_options.pattern_range ]]</p>
-								<vue-range-slider :tooltip="null" :min="+0" :max="+100" :step="+1" ref="slider"
-								v-model="line_options.pattern_range"></vue-range-slider>
-						<p>Start to apply line pattern (between 1-100): [[ line_options.pattern_start ]]</p>
-								<vue-range-slider :tooltip="null" :min="+1" :max="+100" :step="+1" ref="slider"
-								v-model="line_options.pattern_start"></vue-range-slider>
-						<p>(x-dimension of the line preview might not be accurate depending on perimeter of the shape outline)</p>
-						<canvas id="linePreviewCanvas" height="140" width="700" style="border:1px solid #757575; background-color: #eaeaea; margin-top: 10px; "></canvas>
-						<p>Transition rate (for line pattern): [[ line_options.transition_rate ]]</p>
-						<vue-range-slider :tooltip="null" :min="+0.2" :max="+1" :step="+0.1" ref="slider"
-							v-model="line_options.transition_rate"></vue-range-slider>
-						<p>Pattern type:</p>
-						<div class="center-point-buttons">
-    							<button
-        							v-for="n in ['tri', 'rect', 'circ', 'wav', 'str', 'nobs']"
-        							:key="n"
-        							:class="{ selected: line_options.pattern === n }"
-        							@click="line_options.pattern= n"
-        							type="button"
-    								><span v-if="n === 'tri'">/\/\/\</span>
-        							<span v-else-if="n === 'rect'">|_|</span>
-        							<span v-else-if="n === 'circ'">OOO</span>
-									<span v-else-if="n === 'wav'">~~~</span>
-									<span v-else-if="n === 'str'">---</span>
-									<span v-else-if="n === 'nobs'">nobs</span>
-								</button>
-						</div>
-						<p>Amplitude: [[ line_options.amplitude ]]</p>
-						<vue-range-slider :tooltip="null" :min="+1" :max="+40" :step="+1" ref="slider"
-							v-model="line_options.amplitude"></vue-range-slider>
-						<p>Frequency:</p>
-						<div class="center-point-buttons">
-    							<button
-        							v-for="n in 4"
-        							:key="n"
-        							:class="{ selected: line_options.frequency === n }"
-        							@click="line_options.frequency= n"
-        							type="button"
-    								><span v-if="n === 1">4</span>
-        							<span v-else-if="n === 2">3</span>
-        							<span v-else-if="n === 3">2</span>
-									<span v-else-if="n === 4">1</span>
-								</button>
-						</div>
-						<div class="center-point-buttons">
-    							<button
-        							v-for="n in [1,0,-1]"
-        							:key="n"
-        							:class="{ selected: line_options.irregularity === n }"
-        							@click="line_options.irregularity= n"
-        							type="button"
-    								><span v-if="n === 1">irregularity inside</span>
-        							<span v-else-if="n === 0">no irregularity</span>
-        							<span v-else-if="n === -1">irregularity outside</span>
-								</button>
-						</div>
-						<p>Glitches:</p>
-						<div class="center-point-buttons">
-    							<button
-        							v-for="n in ['none','mesh']"
-        							:key="n"
-        							:class="{ selected: line_options.glitch === n }"
-        							@click="line_options.glitch= n"
-        							type="button"
-    								><span v-if="n === 'none'">none</span>
-        							<span v-else-if="n === 'mesh'">mesh</span>
-								</button>
-						</div>
+				</div>
 
+				<div class="section" id="line">
+					<h2>Line</h2>
+					<div class="flex-row">
+						<div>
+						<p>Range to apply line pattern (in %): <span>[[ line_options.pattern_range ]]</span></p>
+							<vue-range-slider :tooltip="null" :min="+0" :max="+100" :step="+1" ref="slider"
+								v-model="line_options.pattern_range"></vue-range-slider>
+						</div>
+						<div>
+						<p>Start to apply line pattern (between 1-100): <span>[[ line_options.pattern_start ]]</span></p>
+							<vue-range-slider :tooltip="null" :min="+1" :max="+100" :step="+1" ref="slider"
+								v-model="line_options.pattern_start"></vue-range-slider>
+						</div>
 					</div>
-					<h4>AI Scores</h4>
+						<p class="explain">(x-dimension of the line preview might not be accurate depending on perimeter of the shape outline)</p>
+						<canvas id="linePreviewCanvas" height="140" width="700" style="border:1px solid #757575; background-color: #eaeaea; margin-top: 10px; "></canvas>
+						<div class="flex-row">
+							<div>
+								<p>Pattern type:</p>
+								<div class="buttons">
+										<button
+											v-for="n in ['tri', 'rect', 'circ', 'wav', 'str', 'nobs']"
+											:key="n"
+											:class="{ selected: line_options.pattern === n }"
+											@click="line_options.pattern= n"
+											type="button"
+											><span v-if="n === 'tri'">/\/\/\</span>
+											<span v-else-if="n === 'rect'">|_|</span>
+											<span v-else-if="n === 'circ'">OOO</span>
+											<span v-else-if="n === 'wav'">~~~</span>
+											<span v-else-if="n === 'str'">---</span>
+											<span v-else-if="n === 'nobs'">nobs</span>
+										</button>
+								</div>
+							</div>
+							<div>
+								<p>Transition rate (for line pattern): <span>[[ line_options.transition_rate ]]</span></p>
+								<vue-range-slider :tooltip="null" :min="+0.2" :max="+1" :step="+0.1" ref="slider"
+									v-model="line_options.transition_rate"></vue-range-slider>
+							</div>
+						</div>
+						<div class="flex-row">
+							<div>
+								<p>Amplitude: <span>[[ line_options.amplitude ]]</span></p>
+								<vue-range-slider :tooltip="null" :min="+1" :max="+40" :step="+1" ref="slider"
+									v-model="line_options.amplitude"></vue-range-slider>
+							</div>
+							<div>
+								<p>Frequency:</p>
+								<div class="buttons">
+										<button
+											v-for="n in 4"
+											:key="n"
+											:class="{ selected: line_options.frequency === n }"
+											@click="line_options.frequency= n"
+											type="button"
+											><span v-if="n === 1">4</span>
+											<span v-else-if="n === 2">3</span>
+											<span v-else-if="n === 3">2</span>
+											<span v-else-if="n === 4">1</span>
+										</button>
+								</div>
+							</div>
+						</div>
+						<div class="flex-row">
+							<div>
+								<p>Irregularity:</p>
+								<div class="buttons">
+										<button
+											v-for="n in [1,0,-1]"
+											:key="n"
+											:class="{ selected: line_options.irregularity === n }"
+											@click="line_options.irregularity= n"
+											type="button"
+											><span v-if="n === 1">irregularity inside</span>
+											<span v-else-if="n === 0">no irregularity</span>
+											<span v-else-if="n === -1">irregularity outside</span>
+										</button>
+								</div>
+							</div>
+							<div>
+								<p>Glitches:</p>
+								<div class="buttons">
+										<button
+											v-for="n in ['none','mesh']"
+											:key="n"
+											:class="{ selected: line_options.glitch === n }"
+											@click="line_options.glitch= n"
+											type="button"
+											><span v-if="n === 'none'">none</span>
+											<span v-else-if="n === 'mesh'">mesh</span>
+										</button>
+								</div>
+							</div>
+						</div>
+				</div>
+
+				<div class="section">
+					<h2>AI Scores</h2>
 					<div style="display: flex; gap: 1em;">
 						<p>motivation_score: [[ai_scores.motivation_score]]</p>
     					<p>complexity_score: [[ai_scores.complexity_score]]</p>
 						<p>coherence_score: [[ai_scores.coherence_score]]</p>
 					</div>
 				</div>
-			</div>
+				
 		</div>
 	</div>
 </body>

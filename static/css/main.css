@@ -2,31 +2,16 @@ h2{
     margin-bottom: 1rem;
 }
 
-#vm {
-    width: 100vw;
+
+
+#main-container {
+    background-color: #ffc6c6;
+    padding: 10px 0.5em 10px 3em;
+    width: 100%;
+    overflow-x: hidden;
 }
 
-#header {
-    overflow: auto;
-    position: fixed;
-    background: white;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    justify-content: space-between;
-    align-content: space-between;
-    padding: 10px;
-    z-index: 100;
-}
-
-#header h1 {
-    float: left;
-    font-size: 25px;
-    font-style: italic;
-    font-weight: 900;
-}
-
-#header .icon {
+.icon {
     cursor: pointer;
     animation-name: wave-animation;  /* Refers to the name of your @keyframes element below */
     animation-duration: 2.5s;        /* Change to speed up or slow down */
@@ -34,7 +19,6 @@ h2{
     transform-origin: 50% 50%;       /* Pivot around the bottom-left palm */
     width: 100%;
 }
-
 @keyframes wave-animation {
     0% { transform: rotate( 0.0deg) }
     10% { transform: rotate(1.0deg) }  /* The following five values can be played with to make the waving more or less extreme */
@@ -50,66 +34,46 @@ input {
     width: 100%;
     font-size: 16px;
 }
-
-input[type=checkbox], input[type=radio] {
-    width: auto;
+h2 {
+    margin: 0.5em 0 0.5em 0;
+    border-radius: 50px;       /* Fully rounded pill shape */
+    text-align: center;        /* Center text */
+    font-family: sans-serif;   /* Clean font */
+    color: #000;               /* Black text */
+    padding: 8px 20px;        /* Padding around text */
+    background-color: white;
+    border: 6px dashed #b0b0b0;
+    width: 10em;
 }
-
-.text-input {
-    float: left;
-    font-size: 16px;
-    font-style: italic;
-    font-weight: 900;
-    /* overflow: visible; */
-    height: 30px;
-    width: auto;
+p:not(.explain) {
+    margin: 0.5em 0 1em 0;
+    border-radius: 50px;       /* Fully rounded pill shape */
+    text-align: center;        /* Center text */
+    font-family: sans-serif;   /* Clean font */
+    color: #000;               /* Black text */
+    padding: 8px 20px;        /* Padding around text */
 }
-
-#motion {
-    width: 100%;
-    font-size: 50px;
-    line-height: 50px;
-    cursor: pointer;
-    margin-bottom: 10px;
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
+p span {
+    font-weight: bold;
 }
-
-#motion div {
-    padding: 0 10px;
+#setup p {
+    background-color: #fdd835; /* Bright yellow */
+    border: 3px solid #673ab7; /* Purple border */
 }
-
-p {
-    margin: 0.75rem 0 0.5rem 0;
+#layer p {
+    background-color: #fcd9a4; /* Bright yellow */
+    border: 3px solid #f25d5d ; /* Purple border */
 }
-
-#control {
+#shape p {
+    background-color: #dcd4ff; /* Bright yellow */
+    border: 3px solid #215c28 ; /* Purple border */
+}
+#line p:not(.explain) {
+    background-color: #b2f0c2; /* Bright yellow */
+    border: 3px solid #8b0000; /* Purple border */
+}
+.section {
     padding-bottom: 20px;
-}
-
-#sidebar {
-    background-color: #ffc6c6;
-    padding: 160px 10px 10px 10px;
-    width: 100%;
-}
-
-#sidebar::-webkit-scrollbar {
-    display: none;
-}
-
-#options {
-    padding: 20px 0;
-    border-top: 4px solid black;
-}
-
-#buttons{
-    width: 100%;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    justify-content: space-evenly;
-    margin-bottom: 1rem;
 }
 
 button {
@@ -119,49 +83,37 @@ button {
     padding: 5px 25px;
     text-align: center;
     text-decoration: none;
-    display: inline-block;
     font-size: 16px;
+    margin: 0 0.5em 0 0;
+}
+button.selected {
+    background: #007bff;
+    color: #fff;
 }
 
-/*.toolpath{
-    display: none;
-}*/
-
+.buttons {
+    display: inline-block;
+    margin-bottom: 1em;
+}
+.vue-range-slider:not(.small) {
+    width: 30em !important;
+}
+.vue-range-slider.small {
+    width: 22em !important;
+}
 .vue-range-slider.slider-component{
     padding: 0 !important;
 }
 
-.shape, .toolpath{
-    margin-top: 1rem;
-    padding: 0.5rem 0;
-    border-top: 1px dotted black;
-}
-
-.shape-flex-row {
+.flex-row {
     display: flex;
     flex-direction: row;
     align-items: flex-start; /* or center */
-    gap: 2rem; /* optional: space between the two divs */
-    width: 100vw;           /* Fill the viewport width */
+    width: 100%;            /* Fill the parent width, not viewport */
     box-sizing: border-box;
+    margin-bottom: 1em;
 }
-.shape-flex-row > div {
-    flex: 1; /* This will make both divs take equal space */
-    padding: 0.5rem;
-    box-sizing: border-box; /* Include padding in width calculation */
-}
-
-.center-point-buttons button {
-    margin: 0 4px;
-    padding: 0.5em 1em;
-    border: 1px solid #757575;
-    background: #eaeaea;
-    cursor: pointer;
-    border-radius: 4px;
-    font-weight: bold;
-}
-.center-point-buttons button.selected {
-    background: #007bff;
-    color: #fff;
-    border-color: #0056b3;
+.flex-row > div {
+    padding: 0 1rem 0 0;
+    box-sizing: border-box; 
 }
