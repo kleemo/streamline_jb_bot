@@ -2,7 +2,7 @@ import json
 import pandas as pd
 
 # Load the CSV file
-csv_file = "telegram_bot\\dpo_ready_data.csv"
+csv_file = "telegram_bot/dpo_ready_data.csv"
 df = pd.read_csv(csv_file)
 
 # Function to convert a row into the desired JSON format

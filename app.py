@@ -19,8 +19,8 @@ import requests
 import telegram_bot.parametershandler
 import threading
 
-port = 'COM3' # use this port for Windows
-# port = '/dev/tty.usbmodem14101' # use this port value for Aurelian
+#port = 'COM3' # use this port for Windows
+port = '/dev/tty.usbmodem14401' # use this port value for Aurelian
 baud = 115200 # baud rate as defined in the streamline-delta-arduino firmware
 # baud = 250000 # use this baud rate for the ZhDK Makerbot printer
 # connect to printer

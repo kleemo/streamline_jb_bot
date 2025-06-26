@@ -15,7 +15,7 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
         layer: 0,
         printing: false,
         connected: false,
-        port: 'COM3',
+        port: '/dev/tty.usbmodem14401',
         baud: '115200',
         webhookUrl: '',
         ai_scores:{},
