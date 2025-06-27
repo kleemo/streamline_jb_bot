@@ -22,8 +22,8 @@
 			<div class="section" id="setup">
 				<h2>Setup</h2>
 				<div class="buttons">
-					<button @click="setup">New</button>
-					<button @click="print">[[ printLable ]]</button>
+					<button @click="setup">New/Home</button>
+					<button @click="print" :disabled="printLable === 'printing...'">[[ printLable ]]</button>
 					<button @click="pause">[[ pauseLable ]]</button>
 				</div>
 				<div class="flex-row">
@@ -207,8 +207,6 @@
 									>+</button>
 									</div>
 								</div>
-							</div>
-							<div class="flex-row">
 								<div>
 								<p>outline:</p>
 									<div class="buttons">
@@ -223,20 +221,6 @@
 										</button>
 									</div>
 								</div>
-								<div>
-									<p>non-planar:</p>
-									<div class="buttons">
-										<button
-											v-for="n in ['yes', 'no']"
-											:key="n"
-											:class="{ selected: shape_options.non_planar === n }"
-											@click="shape_options.non_planar= n"
-											type="button"
-											><span v-if="n === 'no'">no</span>
-											<span v-else-if="n === 'yes'">yes</span>
-										</button>
-									</div>
-							</div>
 							</div>
 						</div>
 						<div>
@@ -268,7 +252,14 @@
 						</div>
 					</div>
 						<p class="explain">(x-dimension of the line preview might not be accurate depending on perimeter of the shape outline)</p>
-						<canvas id="linePreviewCanvas" height="140" width="700" style="border:1px solid #757575; background-color: #eaeaea; margin-top: 10px; "></canvas>
+						<div class="flex-row">
+							<div>
+								<canvas id="linePreviewCanvas" height="140" width="700" style="border:1px solid #757575; background-color: #eaeaea; margin-top: 10px; "></canvas>
+							</div>
+							<div>
+								<canvas id="z-PlanePreviewCanvas" height="140" width="700" style="border:1px solid #757575; background-color: #eaeaea; margin-top: 10px; "></canvas>
+							</div>
+						</div>
 						<div class="flex-row">
 							<div>
 								<p>Pattern type:</p>
@@ -289,15 +280,29 @@
 								</div>
 							</div>
 							<div>
-								<p>Transition rate (for line pattern): <span>[[ line_options.transition_rate ]]</span></p>
+								<p>Transition rate (for line): <span>[[ line_options.transition_rate ]]</span></p>
 								<vue-range-slider :tooltip="null" :min="+0.2" :max="+1" :step="+0.1" ref="slider"
 									v-model="line_options.transition_rate"></vue-range-slider>
 							</div>
+							<div>
+									<p>non-planar:</p>
+									<div class="buttons">
+										<button
+											v-for="n in ['yes', 'no']"
+											:key="n"
+											:class="{ selected: z_plane.non_planar === n }"
+											@click="z_plane.non_planar= n"
+											type="button"
+											><span v-if="n === 'no'">no</span>
+											<span v-else-if="n === 'yes'">yes</span>
+										</button>
+									</div>
+								</div>
 						</div>
 						<div class="flex-row">
 							<div>
 								<p>Amplitude: <span>[[ line_options.amplitude ]]</span></p>
-								<vue-range-slider :tooltip="null" :min="+1" :max="+40" :step="+1" ref="slider"
+								<vue-range-slider class="small" :tooltip="null" :min="+1" :max="+40" :step="+1" ref="slider"
 									v-model="line_options.amplitude"></vue-range-slider>
 							</div>
 							<div>
@@ -313,6 +318,26 @@
 											<span v-else-if="n === 2">3</span>
 											<span v-else-if="n === 3">2</span>
 											<span v-else-if="n === 4">1</span>
+										</button>
+								</div>
+							</div>
+							<div>
+								<p>Amplitude (z-plane): <span>[[ z_plane.amplitude ]]</span></p>
+								<vue-range-slider class="small" :tooltip="null" :min="+1" :max="+40" :step="+1" ref="slider"
+									v-model="z_plane.amplitude"></vue-range-slider>
+							</div>
+							<div>
+								<p>Frequency (z-plane):</p>
+								<div class="buttons">
+										<button
+											v-for="n in [10,20,30]"
+											:key="n"
+											:class="{ selected: z_plane.frequency === n }"
+											@click="z_plane.frequency= n"
+											type="button"
+											><span v-if="n === 10">3</span>
+											<span v-else-if="n === 20">2</span>
+											<span v-else-if="n === 30">1</span>
 										</button>
 								</div>
 							</div>

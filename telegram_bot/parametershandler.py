@@ -63,7 +63,6 @@ class ParametersHandler():
             "growth_directions": [(-40,50), (40,5),(-40,-30),(-30,20),(-10,-30)],
             "repetitions": 1,
             "free_hand_form":[],
-            "non_planar":"no"
         }
         self.line_options = {
             "pattern_range": 60,
@@ -74,6 +73,11 @@ class ParametersHandler():
             "frequency":1,
             "irregularity":0,
             "glitch": "none"
+        }
+        self.z_plane = {
+            "frequency": 20,
+            "amplitude": 10,
+            "non_planar": "no",
         }
         self.ai_scores = {}
 
