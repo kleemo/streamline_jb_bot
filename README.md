@@ -36,11 +36,11 @@ Flask using SocketIO to communicate with the frontend.
 The application receives updates from the chatbot through a webhook. When deploying the application on localhost, ngrok is used to expose the webhook.
 
 ### API Integration
-For chat text classification and completion, we use the OpenAI API. 
+For chat text classification and completion, we use the OpenAI API.  
 To send text messages back to the user, we use the Telegram API.
 
 ### 3D Printer Communication
-To communicate with the 3D printer, [Printrun suite](https://github.com/kliment/Printrun) was used.
+To communicate with the 3D printer, the [Printrun suite](https://github.com/kliment/Printrun) was used.
 
 # 3D Simulation
 For testing during development and documentation, you can view some of the generated 3D shapes on this website: https://spectacular-hotteok-47e6cf.netlify.app/
@@ -57,8 +57,8 @@ See instructions from the previous version: [flask-socketio-printer](https://git
 ### Webhook Exposure with ngrok
 When running the application for the first time and trying to connect to the chatbot, an authentication error will occur. To resolve this error, an account at https://ngrok.com/ is needed.
 
-### Changing connection port
-The port and baud rate for connecting to the printer should be changed in the app.py file and in the static/vue_instance.js file. 
+### Changing Connection Port
+The port and baud rate for connecting to the printer should be changed in the `app.py` file and in the `static/vue_instance.js` file. 
 
 # AI Scores
 The application mainly uses the OpenAI GPT-4o model for extracting pre-defined scores from text, images, and GPS locations. As of now, GPT-4o does not support audio processing; therefore, a TensorFlow model is used to extract information from audio files.
@@ -84,9 +84,9 @@ Modification of existing scores and adding additional custom scores should be do
 ```
 
 ### Mapping AI Scores to Printing Parameters
-Mapping the retrieved ai scores to a shape or line parameter can be done in the telegram_bot/parametershandler.py file. All the possible parameters are listed at the top of the file and are also further described in the Geometry Taxonomy section. When receiving messages from the user through the chatbot the application calls a method in the parametershandler.py file depending on the type of the recieved message. Each method then calls the function to extract the ai socres and may also extract additional information about the input, for example pixel brightness for messages of type image.
+Mapping the retrieved AI scores to a shape or line parameter can be done in the `telegram_bot/parametershandler.py` file. All possible parameters are listed at the top of the file and are also further described in the Geometry Taxonomy section. When receiving messages from the user through the chatbot, the application calls a method in the `parametershandler.py` file depending on the type of the received message. Each method then calls the function to extract the AI scores and may also extract additional information about the input, for example pixel brightness for messages of type image.
 
-Example 1: mapping the diameter of the second center point to the pixel brighness of an image. In the set_parameters_imgInput add:
+Example 1: Mapping the diameter of the second center point to the pixel brightness of an image. In `set_parameters_imgInput` add:
 ```python
 if len(self.shape_options["diameter"]) >= 2:  # Make sure we have at least 2 center points
     max_diameter = max(self.shape_options["diameter"][1][0], self.shape_options["diameter"][1][1]) + 40
@@ -97,47 +97,50 @@ if len(self.shape_options["diameter"]) >= 2:  # Make sure we have at least 2 cen
     self.shape_options["diameter"][1][1] = new_diameter  # Assign y-diameter of the 2nd center point
 ```
 
-Example 2: mapping a line pattern to the location category. In the set_parameters_locationInput add:
+Example 2: Mapping a line pattern to the location category. In `set_parameters_locationInput` add:
 ```python
 location_category = scores.get("location_category", "none")  # none is the default value if not found
 if location_category == "urban":
     self.line_options["pattern"] = "rect"
 ```
-### Fine-tune the model with scoring examples
+
+### Fine-tune the Model with Scoring Examples
 
 # Printing Parameters
-- Starting height: Can be set in the slicerhandler.py file at the very top.
-- E (often refered to as extrusion rate) controls how much filament is extruded. Standard value is around 0.8 for more wetter clay or when the pressure is high use slighly higher values.
-- F (often refered to as extrusion rate) controls how fast the x,y move happens, and cansequenctly also how fast the extrusion happens. Here as well increase slighly when the clay is wetter. A good starting value is around 1200.
-- New/Home button brings the printer head back to its home position and resets the layer count to 0. But does not reset any other values.
+- **Starting height:** Can be set in the `slicerhandler.py` file at the very top.
+- **E** (often referred to as extrusion rate) controls how much filament is extruded. The standard value is around 0.8; for wetter clay or when the pressure is high, use slightly higher values.
+- **F** (often referred to as feed rate) controls how fast the x, y move happens, and consequently also how fast the extrusion happens. Here as well, increase slightly when the clay is wetter. A good starting value is around 1200.
+- The **New/Home** button brings the printer head back to its home position and resets the layer count to 0, but does not reset any other values.
 
 # Geometry Taxonomy
-*Note: Also see google sheet for reference*
+*Note: Also see the Google Sheet for reference.*
 
 ### Shape Parameters
 
 ### Line Parameters
 
 # Telegram Bot
-To improve the behaviour of the chat bot a usefule technique is to fine-tune an allready trained model like gpt-o https://platform.openai.com/docs/guides/fine-tuning This codebase includes a custom script to format your own examples into the requiered data format. The method we will use for improving the bot's behaviour is DPO (direct preference optimization), this method is popular for adjusting a chatbot behaviour as it lets us discriminate between desired and undesired responses.
+To improve the behavior of the chatbot, a useful technique is to fine-tune an already trained model like GPT-4o. See: https://platform.openai.com/docs/guides/fine-tuning  
+This codebase includes a custom script to format your own examples into the required data format. The method we use for improving the bot's behavior is DPO (Direct Preference Optimization), which is popular for adjusting chatbot behavior as it lets us discriminate between desired and undesired responses.
 
 ### Fine-tune Model with Examples
-1. Prepare a CSV file with your own conversation examples in the following format. If the rejected column is left blank, the script will fill the column with a generated gpt-o response to the prompt.
+1. Prepare a CSV file with your own conversation examples in the following format. If the `rejected` column is left blank, the script will fill the column with a generated GPT-4o response to the prompt.
 
 | prompt                                | chosen                        | rejected                      |
 |----------------------------------------|-------------------------------|-------------------------------|
 | The input the model receives           | Preferred chatbot response    | Non-optimal chatbot response  |
-| "initiate a conversation with the user"| "you still with me?"  | "Hello, how can I help you?"           |
-2. Copy paste your csv file into the telegram_bot folder.
+| "initiate a conversation with the user"| "you still with me?"          | "Hello, how can I help you?"  |
 
-3. In the telegram_bot/convert_data.py file specify the correct path to your csv file at the top.
+2. Copy and paste your CSV file into the `telegram_bot` folder.
 
-4. Now run the convert_data.py script if the execution is successful you will see a message in the terminal. The correctly formated data is now in the telegram_bot/structured_dpo_data.jsonl file.
+3. In the `telegram_bot/convert_data.py` file, specify the correct path to your CSV file at the top.
 
-5. Head over the your open ai platform dashboard. On the left menu bar navigate to "Fine-tuning". Create a new fine-tuned model and choose the dpo method. Also upload your prepared data in the same pop-up window. After creating the model it can take a couple of hours until your model is ready.
+4. Now run the `convert_data.py` script. If the execution is successful, you will see a message in the terminal. The correctly formatted data is now in the `telegram_bot/structured_dpo_data.jsonl` file.
+
+5. Head over to your OpenAI platform dashboard. On the left menu bar, navigate to "Fine-tuning". Create a new fine-tuned model and choose the DPO method. Also upload your prepared data in the same pop-up window. After creating the model, it can take a couple of hours until your model is ready.
 ![dpo setting](doc_images/fine-tune-dpo.png)
 
-6. After your model is done training copy paste the string name of your model (it should look something like this ft:gpt-4.1-2025-04-14:streamline:streamline-bot-17-06:BjWPLc0H). To now use your fine-tuned model in the application paste the string in the telegram_bot/handlers.py file at the top. To try your model you can also select it in the playground provided by open ai.
+6. After your model is done training, copy and paste the string name of your model (it should look something like this: `ft:gpt-4.1-2025-04-14:streamline:streamline-bot-17-06:BjWPLc0H`). To use your fine-tuned model in the application, paste the string in the `telegram_bot/handlers.py` file at the top. To try your model, you can also select it in the playground provided by OpenAI.
 
 # Future Work
 ### Multiple Users
