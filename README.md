@@ -116,6 +116,44 @@ if location_category == "urban":
 *Note: Also see the Google Sheet for reference.*
 
 ### Shape Parameters
+The following parameters define the geometry and development of the base shapes during the 3D printing process. These parameters can also be found in the telegram_bot/parametershandler.py file stored in the self.shape_options dictionary.
+
+- **Base Shape**  
+  *(string)*  
+  The primary 2D shape used as the foundation of each layer.  
+  *Supported values:*  
+  - `"circle"` (default)  
+  - `"rectangle"`  
+  - `"triangle"`  
+  - `"freehand"` (custom-drawn outline)
+
+- **Diameter**  
+  *(list of [x, y] float pairs for each center point)*  
+  The target dimensions of each center point’s shape in X and Y directions. These values can dynamically change over time as the shape grows.
+
+- **Rotation**  
+  *(float)*  
+  The rotation applied to each layer (in degrees). Used for gradual twisting or spiraling effects across layers.
+
+- **Center Points**  
+  *(list of (x, y) float tuple)*  
+  The initial coordinates for each separate center point. The lenght of the list is equal to the current number of center points.
+
+- **Growth Directions**  
+  *(list of (x, y) float tuple)*  
+  The target positions each center point moves toward over time, enabling the base shapes to “drift” across the print bed. The lenght of the list is equal to the current number of center points.
+
+- **Transition Rate**  
+  *(float, usually between 0.5–2)*  
+  The smoothing factor controlling how quickly diameters interpolate toward their target values.
+
+- **Repetitions**  
+  *(integer)*  
+  The number of layers for which a shape is repeated before recomputation or change.
+
+- **Free Hand Form**  
+  *(list of [x, y] float pairs)*  
+  Coordinates or vertecies describing a custom shape outline, only used when `base_shape` is `"freehand"`.
 
 ### Line Parameters
 
