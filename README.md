@@ -106,6 +106,8 @@ if location_category == "urban":
 
 ### Fine-tune the Model with Scoring Examples
 
+Reviewing...
+
 # Printing Parameters
 - **Starting height:** Can be set in the `slicerhandler.py` file at the very top.
 - **E** (often referred to as extrusion rate) controls how much filament is extruded. The standard value is around 0.8; for wetter clay or when the pressure is high, use slightly higher values.
