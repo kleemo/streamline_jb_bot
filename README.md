@@ -99,18 +99,20 @@ if len(self.shape_options["diameter"]) >= 2:  # Make sure we have at least 2 cen
 
 Example 2: mapping a line pattern to the location category. In the set_parameters_locationInput add:
 ```python
-location_category = scores.get("location_category", "none")  # Default value if not found
+location_category = scores.get("location_category", "none")  # none is the default value if not found
 if location_category == "urban":
     self.line_options["pattern"] = "rect"
 ```
+### Fine-tune the model with scoring examples
 
 # Printing Parameters
-Start of the height depends on the plate.
-
-### General Settings
+- Starting height: Can be set in the slicerhandler.py file at the very top.
+- E (often refered to as extrusion rate) controls how much filament is extruded. Standard value is around 0.8 for more wetter clay or when the pressure is high use slighly higher values.
+- F (often refered to as extrusion rate) controls how fast the x,y move happens, and cansequenctly also how fast the extrusion happens. Here as well increase slighly when the clay is wetter. A good starting value is around 1200.
+- New/Home button brings the printer head back to its home position and resets the layer count to 0. But does not reset any other values.
 
 # Geometry Taxonomy
-See Google Sheet for reference.
+*Note: Also see google sheet for reference*
 
 ### Shape Parameters
 
