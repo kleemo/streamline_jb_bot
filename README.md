@@ -118,7 +118,7 @@ Reviewing...
 *Note: Also see the Google Sheet for reference.*
 
 ### Shape Parameters
-The following parameters define the geometry and development of the base shapes during the 3D printing process. These parameters can also be found in the telegram_bot/parametershandler.py file stored in the self.shape_options dictionary.
+The following parameters define the geometry and development of the base shapes during the 3D printing process. These parameters can also be found in the telegram_bot/parametershandler.py file stored in the self.shape_options dictionary for mapping them to ai scores.
 
 - **Base Shape**  
   *(string)*  
@@ -158,6 +158,57 @@ The following parameters define the geometry and development of the base shapes 
   Coordinates or vertecies describing a custom shape outline, only used when `base_shape` is `"freehand"`.
 
 ### Line Parameters
+The following parameters define the surface texture, path variation, and dynamic qualities of the printed outline (the infill will always be a straight line). These parameters can also be found in the telegram_bot/parametershandler.py file stored in the self.line_options dictionary for mapping them to ai scores.
+
+- **Pattern**  
+  *(string)*  
+  The type of line modulation applied to the outline of the shape.  
+  **Supported values:**  
+  - `"str"` — Straight (no modulation)  
+  - `"circ"` — Looped 
+  - `"rect"` — Stairs (rectangular pattern)  
+  - `"tri"` — Zigzag 
+  - `"wav"` — Waved (sinusoidal wave)  
+  - `"nobs"` — Small weaved protrusions (knobs)
+
+- **Amplitude**  
+  *(float)*  
+  The height or depth of the line pattern. Affects the prominence of the modulation in millimeters.
+
+- **Frequency**  
+  *(integer should be 1,2,3,or 4)*  
+  The number of pattern repetitions on the line. *Note: on the interface numbers are correct but in the code we reverse the numbers. That is 4 in the code corresponds to the lowest frequency and 1 to the highest*
+
+- **Pattern Start**  
+  *(int between 1-100)*  
+  The start position of the pattern within each layer (as an offset along the outline).
+
+- **Pattern Range**  
+  *(int between 0-100)*  
+  The portion of the outline to which the pattern is applied. The rest remains unmodulated.
+
+- **Irregularity**  
+  *(int should be -1,0 or 1)*  
+  Random noise applied to the pattern’s amplitude, introducing imperfect variations. 1 applies the noise mostly on the inside and -1 on the outside.
+
+- **Transition Rate**  
+  *(float)*  
+  The smoothing factor controlling how quickly the pattern interpolates between the previous and target states. *Note: there is no interpolation for the nobs pattern type. So it is advisible to first transition to a straight line before applying the nobs*
+
+- **Glitch**  
+  *(string)*  
+  Whether and how to introduce unpredictable distortions (“glitches”) into the line path.  
+  **Supported values:**  
+  - `"none"` — No glitching  
+  - `"mesh"` — Insert mesh-like distortions
+
+### z-Plane Parameters
+
+Reviewing...
+
+### Example 1
+<img src="doc_images/ex1_1.png" width="300" style="margin-right:10px;"/>
+<img src="doc_images/ex1_2.png" width="300"/>
 
 # Telegram Bot
 To improve the behavior of the chatbot, a useful technique is to fine-tune an already trained model like GPT-4o. See: https://platform.openai.com/docs/guides/fine-tuning  
