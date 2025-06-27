@@ -207,8 +207,8 @@ The following parameters define the surface texture, path variation, and dynamic
 Reviewing...
 
 ### Example 1
-<img src="doc_images/ex1_1.png" width="300" style="margin-right:10px;"/>
-<img src="doc_images/ex1_2.png" width="300"/>
+<img src="doc_images/ex1_1.png" width="500" style="margin-right:10px;"/>
+<img src="doc_images/ex1_2.png" width="500"/>
 
 # Telegram Bot
 To improve the behavior of the chatbot, a useful technique is to fine-tune an already trained model like GPT-4o. See: https://platform.openai.com/docs/guides/fine-tuning  
