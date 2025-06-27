@@ -119,8 +119,25 @@ if location_category == "urban":
 ### Line Parameters
 
 # Telegram Bot
-To improve the behaviour of the chat bot a usefule technique is to fine-tune an allready trained model like gpt-o https://platform.openai.com/docs/guides/fine-tuning
+To improve the behaviour of the chat bot a usefule technique is to fine-tune an allready trained model like gpt-o https://platform.openai.com/docs/guides/fine-tuning This codebase includes a custom script to format your own examples into the requiered data format. The method we will use for improving the bot's behaviour is DPO (direct preference optimization), this method is popular for adjusting a chatbot behaviour as it lets us discriminate between desired and undesired responses.
+
 ### Fine-tune Model with Examples
+1. Prepare a CSV file with your own conversation examples in the following format. If the rejected column is left blank, the script will fill the column with a generated gpt-o response to the prompt.
+
+| prompt                                | chosen                        | rejected                      |
+|----------------------------------------|-------------------------------|-------------------------------|
+| The input the model receives           | Preferred chatbot response    | Non-optimal chatbot response  |
+| "initiate a conversation with the user"| "you still with me?"  | "Hello, how can I help you?"           |
+2. Copy paste your csv file into the telegram_bot folder.
+
+3. In the telegram_bot/convert_data.py file specify the correct path to your csv file at the top.
+
+4. Now run the convert_data.py script if the execution is successful you will see a message in the terminal. The correctly formated data is now in the telegram_bot/structured_dpo_data.jsonl file.
+
+5. Head over the your open ai platform dashboard. On the left menu bar navigate to "Fine-tuning". Create a new fine-tuned model and choose the dpo method. Also upload your prepared data in the same pop-up window. After creating the model it can take a couple of hours until your model is ready.
+![dpo setting](doc_images/fine-tune-dpo.png)
+
+6. After your model is done training copy paste the string name of your model (it should look something like this ft:gpt-4.1-2025-04-14:streamline:streamline-bot-17-06:BjWPLc0H). To now use your fine-tuned model in the application paste the string in the telegram_bot/handlers.py file at the top. To try your model you can also select it in the playground provided by open ai.
 
 # Future Work
 ### Multiple Users
