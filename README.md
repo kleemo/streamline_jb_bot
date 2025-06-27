@@ -57,6 +57,9 @@ See instructions from the previous version: [flask-socketio-printer](https://git
 ### Webhook Exposure with ngrok
 When running the application for the first time and trying to connect to the chatbot, an authentication error will occur. To resolve this error, an account at https://ngrok.com/ is needed.
 
+### Changing connection port
+The port and baud rate for connecting to the printer should be changed in the app.py file and in the static/vue_instance.js file. 
+
 # AI Scores
 The application mainly uses the OpenAI GPT-4o model for extracting pre-defined scores from text, images, and GPS locations. As of now, GPT-4o does not support audio processing; therefore, a TensorFlow model is used to extract information from audio files.
 
@@ -81,6 +84,25 @@ Modification of existing scores and adding additional custom scores should be do
 ```
 
 ### Mapping AI Scores to Printing Parameters
+Mapping the retrieved ai scores to a shape or line parameter can be done in the telegram_bot/parametershandler.py file. All the possible parameters are listed at the top of the file and are also further described in the Geometry Taxonomy section. When receiving messages from the user through the chatbot the application calls a method in the parametershandler.py file depending on the type of the recieved message. Each method then calls the function to extract the ai socres and may also extract additional information about the input, for example pixel brightness for messages of type image.
+
+Example 1: mapping the diameter of the second center point to the pixel brighness of an image. In the set_parameters_imgInput add:
+```python
+if len(self.shape_options["diameter"]) >= 2:  # Make sure we have at least 2 center points
+    max_diameter = max(self.shape_options["diameter"][1][0], self.shape_options["diameter"][1][1]) + 40
+    min_diameter = min(80, max_diameter) - 80
+    # Helper function to map the range of brightness (0-1) to the desired range
+    new_diameter = self.map_parameter_to_range(avg_brightness, min_diameter, max_diameter, 0, 1)
+    self.shape_options["diameter"][1][0] = new_diameter  # Assign x-diameter of the 2nd center point
+    self.shape_options["diameter"][1][1] = new_diameter  # Assign y-diameter of the 2nd center point
+```
+
+Example 2: mapping a line pattern to the location category. In the set_parameters_locationInput add:
+```python
+location_category = scores.get("location_category", "none")  # Default value if not found
+if location_category == "urban":
+    self.line_options["pattern"] = "rect"
+```
 
 # Printing Parameters
 Start of the height depends on the plate.

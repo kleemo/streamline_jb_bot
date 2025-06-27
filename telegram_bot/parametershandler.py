@@ -154,6 +154,8 @@ class ParametersHandler():
         print("audio loudnes: " + str(rms.mean()))
         #classify the sound. For all the possible audio classes see sound_classes.txt in the same folder
         sound_class = classify_audio(auid_file)
+        #assign the ai scores to a corresponding line parameter
+
         #update the ai scores to display in the UI
         self.ai_scores["sound category"] = sound_class
 
@@ -170,7 +172,7 @@ class ParametersHandler():
         lat = location["latitude"]
         #get scores from ai model
         scores = openai_location_scores(lat,long)
-        location_category = scores.get("location_category", "none")#second argument default value if not possible to read
+        #assign the ai scores to a corresponding line parameter
 
         #update the ai scores to display in the UI
         for key in scores:
