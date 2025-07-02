@@ -30,7 +30,6 @@ class Shapehandler:
             "growth_directions": [],
             "repetitions": 1,
             "free_hand_form":[],
-            "non_planar": "no"
         }
         self.line_options = {
             "pattern_range": 60,
@@ -42,6 +41,11 @@ class Shapehandler:
             "resolution":240,
             "irregularity":0,
             "glitch":"none",
+        }
+        self.z_plane = {
+            "frequency": 20,
+            "amplitude": 10,
+            "non_planar": "no",
         }
 
     def remove_center_point(self, index, layer):
@@ -62,14 +66,15 @@ class Shapehandler:
                     new_cache[k] = v
             self.infill_cache = new_cache
 
-    def update_parameters(self, shape_parameters, line_parameters, layer):
+    def update_parameters(self, shape_parameters, line_parameters, z_plane, layer):
         self.shape_options["base_shape"] = shape_parameters["base_shape"]
         self.shape_options["diameter"] = shape_parameters["diameter"]
         self.shape_options["rotation"] = shape_parameters["rotation"]
         self.shape_options["growth_directions"] = shape_parameters["growth_directions"]
         self.shape_options["transition_rate"] = shape_parameters["transition_rate"]
         self.shape_options["free_hand_form"] = shape_parameters["free_hand_form"]
-        self.shape_options["non_planar"] = shape_parameters["non_planar"]
+
+        self.z_plane = z_plane
 
         self.line_options["pattern"] = line_parameters["pattern"]
         self.line_options["amplitude"] = line_parameters["amplitude"]
@@ -401,8 +406,7 @@ class Shapehandler:
             z_displacement = self.generate_z_displacement()
             for j in range(len(points)):
                 points[j] = pc.rotate(points[j],pc.point(self.shape_options["center_points"][i][0],self.shape_options["center_points"][i][1],0) , self.current_rotation)
-                if j < len(z_displacement):
-                    points[j][2] = z_displacement[j]
+                points[j][2] = z_displacement[j%len(z_displacement)]
             
         self.previous_shapes = shapes
         return shapes
@@ -510,43 +514,55 @@ class Shapehandler:
                 return []
             
     def z_wave(self,num_points,h):
-        points = []
-        if self.current_layer < 2:
-            h = 1
-        for i in range(num_points):
-            angle =  (2 * np.pi * i) / num_points
-            z = h* np.sin(angle)
-            points.append(z)
-        return points
-
+        # Half points for up, half for down (handle odd/even)
+        up_count = num_points // 2
+        down_count = num_points - up_count
+        up = np.linspace(0, 1, up_count, endpoint=False)
+        down = np.linspace(1, 0, down_count)
+        points = np.concatenate([up, down])
+        # Scale by h if needed
+        points = h * points
+        return points.tolist()
             
     def generate_z_displacement(self):
-         displacement = []
-         resolution = self.line_options["resolution"]
-         for i in range(resolution):
-            bundle_size = LINE_CONST*20
-            guides = self.z_wave(bundle_size,8)
-            if  self.shape_options["non_planar"] == "yes":
-                z = guides[i%bundle_size]
-                goal = z
+        displacement = []
+        resolution = self.line_options["resolution"]
+        # Calculate bundle_size as the largest divisor of resolution <= LINE_CONST * self.z_plane["frequency"]
+        target_bundle = LINE_CONST * self.z_plane["frequency"]
+        bundle_size =  max([d for d in range(1, resolution + 1) if resolution % d == 0 and d <= target_bundle])
+        guides = []
+        for i in range(resolution):
+            if i % bundle_size == 0:
+                h = self.z_plane["amplitude"]
+                if self.current_layer < 2:
+                    h = 0
+                guides = self.z_wave(bundle_size, h)
+            if self.z_plane["non_planar"] == "yes":
+                goal = guides[i % bundle_size]
             else:
                 goal = 0
 
+            # Smooth transition towards goal, similar to generate_path
             if len(self.previous_z_vector) < resolution:
-                displacement.append(goal)
-                self.previous_z_vector.append(goal)
+                new_z = goal
+                self.previous_z_vector.append(new_z)
             else:
-                vector = (goal - self.previous_z_vector[i])*0.1
-                # Multiply the vector by a factor (e.g., 0.1)
-                scaled_vector = self.line_options["transition_rate"] * vector
-                if abs(scaled_vector) < self.line_options["transition_rate"]/20:
-                    scaled_vector = 0
-                new_displacement = self.previous_z_vector[i] + scaled_vector
-                if abs(new_displacement) < self.line_options["transition_rate"]:
-                    new_displacement = 0
-                displacement.append(new_displacement)
-                self.previous_z_vector[i] = new_displacement
-         return displacement
+                prev_z = self.previous_z_vector[i]
+                # Move a fraction towards the goal (smoothing factor)
+                delta = goal - prev_z
+                step = self.line_options["transition_rate"] * delta
+                # Cap the step size for smoother initial movement
+                if abs(step) > 0.5:
+                    step = np.sign(step) * 0.5
+                if abs(step) < self.line_options["transition_rate"] / 25:
+                    step = 0
+                new_z = prev_z + step
+                # Optional: snap to zero if very close
+                if abs(new_z) < self.line_options["transition_rate"]:
+                    new_z = 0
+                self.previous_z_vector[i] = new_z
+            displacement.append(new_z)
+        return displacement
     
 #functions to draw realistic UI preview 
 
@@ -582,6 +598,23 @@ class Shapehandler:
 
             displacement.append(goal)
          return displacement
+    
+    def simulate_z_displacement(self):
+        displacement = []
+        resolution = self.line_options["resolution"]
+        # Calculate bundle_size as the largest divisor of resolution <= LINE_CONST * self.z_plane["frequency"]
+        target_bundle = LINE_CONST * self.z_plane["frequency"]
+        bundle_size =  max([d for d in range(1, resolution + 1) if resolution % d == 0 and d <= target_bundle])
+        guides = []
+        for i in range(resolution):
+            if i % bundle_size == 0:
+                guides = self.z_wave(bundle_size, self.z_plane["amplitude"])
+            if self.z_plane["non_planar"] == "yes":
+                goal = guides[i % bundle_size]
+            else:
+                goal = 0
+            displacement.append(goal)
+        return displacement
     
     def simulate_infill(self, spacing=10, clip_start = 0, clip_end = 0):
         inflill = []
@@ -658,4 +691,4 @@ class Shapehandler:
         return transformed[:, :3]  # Drop the homogeneous coordinate
 
 
-    
+

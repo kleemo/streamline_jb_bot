@@ -74,11 +74,20 @@ class ParametersHandler():
             "irregularity":0,
             "glitch": "none"
         }
+<<<<<<< HEAD
         self.ai_scores = {
             "motivation_score": 0,
             "complexity_score": 0,
             "coherence_score": 0,
         }
+=======
+        self.z_plane = {
+            "frequency": 20,
+            "amplitude": 10,
+            "non_planar": "no",
+        }
+        self.ai_scores = {}
+>>>>>>> upstream/main
 
     def get_parameters(self):
         """
@@ -184,7 +193,14 @@ class ParametersHandler():
         print("audio loudnes: " + str(rms.mean()))
         #classify the sound. For all the possible audio classes see sound_classes.txt in the same folder
         sound_class = classify_audio(auid_file)
+<<<<<<< HEAD
         print("audio file is the sound of " + sound_class)
+=======
+        #assign the ai scores to a corresponding line parameter
+
+        #update the ai scores to display in the UI
+        self.ai_scores["sound category"] = sound_class
+>>>>>>> upstream/main
 
     def set_parameters_locationInput(self,location):
         """
@@ -197,6 +213,16 @@ class ParametersHandler():
         #extract information from location
         long= location["longitude"]
         lat = location["latitude"]
+<<<<<<< HEAD
+=======
+        #get scores from ai model
+        scores = openai_location_scores(lat,long)
+        #assign the ai scores to a corresponding line parameter
+
+        #update the ai scores to display in the UI
+        for key in scores:
+            self.ai_scores[key] = scores[key]
+>>>>>>> upstream/main
 
     def increase_input(self):
         """

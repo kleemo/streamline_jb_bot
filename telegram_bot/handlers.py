@@ -10,6 +10,8 @@ import json
 
 # --- Model and Class Names Initialization ---
 
+chat_bot_model = "ft:gpt-4.1-2025-04-14:streamline:streamline-bot-17-06:BjWPLc0H" #replace this string with your own fine-tuned model
+
 # Load the YAMNet model from TensorFlow Hub for audio classification
 yamnet_model_handle = 'https://tfhub.dev/google/yamnet/1'
 model = hub.load(yamnet_model_handle)
@@ -131,7 +133,7 @@ def get_openai_response(user_message):
     global conversation_history 
     conversation_history.append({"role": "user", "content": user_message})
     response = client.chat.completions.create(
-    model="ft:gpt-4.1-2025-04-14:streamline:streamline-bot-17-06:BjWPLc0H",
+    model=chat_bot_model,
     messages=conversation_history,
     )
     ai_response = response.choices[0].message.content
@@ -159,7 +161,7 @@ def get_openai_img_response(image_url):
                 },
             ]})
     response = client.chat.completions.create(
-    model="ft:gpt-4.1-2025-04-14:streamline:streamline-bot-17-06:BjWPLc0H",
+    model=chat_bot_model,
     messages=conversation_history,
     max_tokens=200,
     )
@@ -181,7 +183,7 @@ def get_audio_response(file_path):
     global conversation_history 
     conversation_history.append({"role": "user", "content": f"the user send a sound of {sound_class}."})
     response = client.chat.completions.create(
-    model="ft:gpt-4.1-2025-04-14:streamline:streamline-bot-17-06:BjWPLc0H",
+    model=chat_bot_model,
     messages=conversation_history,
     )
     ai_response = response.choices[0].message.content

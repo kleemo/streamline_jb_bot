@@ -11,9 +11,10 @@ import getopt
 
 import math
 from options import *
-
 # import custom classes for point clculations
 import point_calc as pc
+
+STARTING_HEIGHT = 49.25 #start height with thicker plate
 
 class Slicerhandler:
     def __init__(self):
@@ -38,7 +39,7 @@ class Slicerhandler:
 
         i = 0
         
-        gcode.append("G1 Z" + str(height + 49.25 )) #+ self.params['layer_hight'] #3 for printing on the extra plate
+        gcode.append("G1 Z" + str(height + STARTING_HEIGHT )) #+ self.params['layer_hight'] #3 for printing on the extra plate
         gcode.append("G1 X" + str(points[0][0]) + " Y" + str(points[0][1]))
         gcode.append("G92 E0")
         gcode.append("G1 E5 F500")
@@ -54,21 +55,13 @@ class Slicerhandler:
             # Check if the distance is below the threshold
             if distance < max_distance:  # Example threshold: 10 units
                 gcode.append("G92 E0")
-                if z <= 0:
-                    gcode.append(
-                        "G1 X" + str(x) +
-                        " Y" + str(y) +
-                        " E" + str(distance * self.params['extrusion_rate']) +
-                        " F" + str(self.params['feed_rate'])
-                    )
-                else:
-                    gcode.append(
-                        "G1 Z" + str(height + 49.25 + z) +
-                        " X" + str(x) +
-                        " Y" + str(y) +
-                        " E" + str(distance * self.params['extrusion_rate']) +
-                        " F" + str(self.params['feed_rate'])
-                    )
+                gcode.append(
+                    "G1 Z" + str(height + STARTING_HEIGHT + z) +
+                    " X" + str(x) +
+                    " Y" + str(y) +
+                    " E" + str(distance * self.params['extrusion_rate']) +
+                    " F" + str(self.params['feed_rate'])
+                )
             else:
                 # Move without extrusion
                 gcode.append(

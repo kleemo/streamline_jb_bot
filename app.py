@@ -198,7 +198,6 @@ def shape_options(data):
     parameter_handler.shape_options["transition_rate"] = data["transition_rate"]
     parameter_handler.shape_options["rotation"] = data["rotation"]
     parameter_handler.shape_options["free_hand_form"] = data["free_hand_form"]
-    parameter_handler.shape_options["non_planar"] = data["non_planar"]
 
     parameter_handler.filling = data["filling"]
     parameter_handler.clip_fill_start = data["clip_start"]
@@ -223,10 +222,20 @@ def line_options(data):
 
     shape_param, line_param = parameter_handler.get_parameters()
     global layer
-    shape_handler.update_parameters(shape_param,line_param,layer)
+    shape_handler.update_parameters(shape_param,line_param,parameter_handler.z_plane,layer)
     displacement = [list(pt) for pt in shape_handler.simulate_line_pattern()]
     emit('line_preview',{'line_displacement':displacement})
     print("line_options: ", data)   
+
+@socketio.on('z_plane')
+def z_plane(data):
+    parameter_handler.z_plane = data
+    shape_param, line_param = parameter_handler.get_parameters()
+    global layer
+    shape_handler.update_parameters(shape_param,line_param,parameter_handler.z_plane,layer)
+    displacement = shape_handler.simulate_z_displacement()
+    emit('z_plane_preview',{'displacement':displacement})
+    print("z_plane: ", data)  
 
 
 @socketio.on('printer_connect')
@@ -356,13 +365,11 @@ def start_print():
             #emit('printer_pause_resume')
             #printing = False
 
-
         # create the shape points
-        if layer % update_rate == 0:
-            #update parameters
+        #fetch parameters
             
-            shape_parameter, line_parameters = parameter_handler.get_parameters()
-            shape_handler.update_parameters(shape_parameter, line_parameters, layer)
+        shape_parameter, line_parameters = parameter_handler.get_parameters()
+        shape_handler.update_parameters(shape_parameter, line_parameters,parameter_handler.z_plane, layer)
         shapes = shape_handler.generate_next_layer(layer)#shape_handler.simpple_rectangle()#shape_handler.simple_circle()#shape_handler.simpple_rectangle()#shape_handler.generate_next_layer(layer)
 
         # print outline and infill of each shape
@@ -371,6 +378,7 @@ def start_print():
             if len(points) > 0:
                 #print outline of the shape
                 if outline:
+                    points.append(points[0])#trace over the start of the outline again
                     gcode = slicer_handler.create(height, points, max_distance=200)
                     print_handler.send(gcode)
                     while (print_handler.is_printing() or print_handler.is_paused()):

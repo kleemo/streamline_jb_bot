@@ -40,7 +40,6 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             clip_end:0,
             rotation:0,
             free_hand_form:[],
-            non_planar: "no"
         },
         current_shape: {
             center_points: [[-40,50], [40,5],[-40,-30],[-30,20]],
@@ -60,6 +59,12 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             irregularity: 0,
             glitch: "none"
         },
+        z_plane_displacement: [],
+        z_plane: {
+            non_planar: "no",
+            frequency: 20,
+            amplitude: 10
+        },
         draggedGrowthIndex: null,
         selected_index : 0,
         dragOffset: { x: 0, y: 0 },
@@ -68,6 +73,7 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
     this.drawCenterPoints();
     this.draw_line_preview();
     this.drawFreeHandShape();
+    this.draw_z_plane_preview();
     const canvas = document.getElementById('centerPointsCanvas');
     canvas.addEventListener('mousedown', this.onCanvasMouseDown);
     canvas.addEventListener('mousemove', this.onCanvasMouseMove);
@@ -104,8 +110,18 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             },
             deep: true
         },
+        z_plane: {
+            handler: function (newValue, oldValue) {
+                socket.emit('z_plane', this.z_plane);
+                this.draw_z_plane_preview();
+            },
+            deep: true
+        },
         line_displacement: function(newValue, oldValue){
             this.draw_line_preview();
+        },
+        z_plane_displacement: function(newValue, oldValue){
+            this.draw_z_plane_preview();
         },
         'shape_options.diameter_x': function(newValue, oldValue) {
             this.drawCenterPoints();
@@ -310,6 +326,66 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             ctx.lineWidth = 2;
             ctx.stroke();
 
+            // Draw "Start" and "End" labels
+            if (resolution > 0) {
+                ctx.font = "16px Arial";
+                ctx.fillStyle = "blue";
+                ctx.fillText("Start", 5, 20);
+                ctx.fillText("End", canvas.width-30, 20);
+            }
+
+        },
+        draw_z_plane_preview: function () {
+            const canvas = document.getElementById('z-PlanePreviewCanvas');
+            if (!canvas) return;
+            if (this.z_plane_displacement == []) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            this.draw_grid(ctx);
+            const resolution = this.z_plane_displacement.length;
+            const spacing = canvas.width / resolution
+
+            ctx.beginPath();
+            for (let i =0; i < resolution; i++) {
+                x = i*spacing;
+                y = canvas.height/2 + (this.z_plane_displacement[i] * DRAWING_SCALING * FLIP_Y);
+                if (i== 0){
+                    ctx.moveTo(x,y);
+                }else{
+                    ctx.lineTo(x,y);
+                }
+            }
+
+            ctx.strokeStyle = "#000000";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Draw vertical axis with arrow and "z" label
+            const marginX = 10;
+            const axisTop = 30;
+            const axisBottom = canvas.height - axisTop;
+            // Draw main axis line
+            ctx.save();
+            ctx.strokeStyle = "blue";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(marginX, axisBottom);
+            ctx.lineTo(marginX, axisTop);
+            ctx.stroke();
+
+            // Draw arrowhead
+            ctx.beginPath();
+            ctx.moveTo(marginX, axisTop);
+            ctx.lineTo(marginX - 7, axisTop + 14);
+            ctx.lineTo(marginX + 7, axisTop + 14);
+            ctx.closePath();
+            ctx.fillStyle = "blue";
+            ctx.fill();
+
+            // Draw "z" label above the arrow
+            ctx.font = "16px Arial";
+            ctx.fillStyle = "blue";
+            ctx.fillText("z-axis", marginX - 8, axisTop - 5);
         },
         addVertex(event) {
             const canvas = document.getElementById('freeHandShapeCanvas');
@@ -489,9 +565,9 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             socket.emit('printer_setup');
         },
         print: function(event) {
-            socket.emit('start_print');
             if (this.printLable == "Print") {
-                this.printLable = "Home / Park"
+                socket.emit('start_print');
+                this.printLable = "printing..."
             } else {
                 this.printLable = "Print"
             }
