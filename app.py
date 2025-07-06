@@ -402,10 +402,11 @@ def start_print():
         time.sleep(simulation_time)  # Wait 10 seconds for simulation
 
         #check and remove any center point that is too narrow
-        for i in range(len(shape_handler.current_diameter)):
+        for i in reversed(range(len(shape_handler.current_diameter))):
             diameter = shape_handler.current_diameter[i]
-            if diameter[0] <=2 or diameter[1] <=2:
-                emit('remove_center_point',{'index':i})
+            if diameter[0] <= 2 or diameter[1] <= 2:
+                emit('remove_center_point', {'index': i})
+                time.sleep(5)
             
         print("height = " + str(height))
         print("layer = " + str(layer))

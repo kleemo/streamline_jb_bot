@@ -234,6 +234,20 @@ The following parameters define the height profile of the printed outline. These
   </tr>
 </table>
 
+### Example 2
+<table>
+  <tr>
+    <td>
+      <img src="doc_images/ex2_1.png" width="600" style="margin-right:10px;"/>
+      <br/>
+      <img src="doc_images/ex2_2.png" width="600"/>
+    </td>
+    <td style="vertical-align:top; padding-left:20px;">
+      This example demonstrates a free-hand base shape. The pattern applied to the outline is a loop with a irregularity. The center points shift slighly with one of them norrowing over time.
+    </td>
+  </tr>
+</table>
+
 # Telegram Bot
 To improve the behavior of the chatbot, a useful technique is to fine-tune an already trained model like GPT-4o. See: https://platform.openai.com/docs/guides/fine-tuning  
 This codebase includes a custom script to format your own examples into the required data format. The method we use for improving the bot's behavior is DPO (Direct Preference Optimization), which is popular for adjusting chatbot behavior as it lets us discriminate between desired and undesired responses.
