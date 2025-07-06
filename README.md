@@ -217,7 +217,7 @@ The following parameters define the height profile of the printed outline. These
   *(boolean)*  
   Determines whether the the frequency and amplitude of the z-plane have any effect on the print. 
   **Supported values:**  
-  - `"no"` — No elvevation in the print, height within a layer stays the same.  
+  - `"no"` — No elveation in the print, height within a layer stays the same.  
   - `"yes"` — height within a layer can vary according to the frequency and amplitude values.
 
 ### Example 1
@@ -273,5 +273,7 @@ This codebase includes a custom script to format your own examples into the requ
 
 # Future Work
 ### Multiple Users
+At the moment, the application does not differentiate between different users sending messages through the chatbot. All inputs are processed the same way and contribute towards the printing outcome.
 
 ### Storing Outcomes for Model Training
+The dynamically generated G-code is stored in the `output_gcode_file.gcode` file. Currently, the application does not write the chatbot history to a file. However, the G-code could potentially be stored together with screenshots of the Telegram chat to better understand how the chat conversation relates to the printing outcome.
