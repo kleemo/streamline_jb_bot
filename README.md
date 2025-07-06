@@ -113,6 +113,7 @@ Reviewing...
 - **E** (often referred to as extrusion rate) controls how much filament is extruded. The standard value is around 0.8; for wetter clay or when the pressure is high, use slightly higher values.
 - **F** (often referred to as feed rate) controls how fast the x, y move happens, and consequently also how fast the extrusion happens. Here as well, increase slightly when the clay is wetter. A good starting value is around 1200.
 - The **New/Home** button brings the printer head back to its home position and resets the layer count to 0, but does not reset any other values.
+- **Max height:** Can be set in the `app.py` file at the very top. Determines the maximal height of the object to print. If the specified height is reached the printer stops. *Note: the maximal height also includes the starting heigth*
 
 # Geometry Taxonomy
 *Note: Also see the Google Sheet for reference.*
@@ -172,7 +173,7 @@ The following parameters define the surface texture, path variation, and dynamic
   - `"nobs"` — Small weaved protrusions (knobs)
 
 - **Amplitude**  
-  *(float)*  
+  *(integer)*  
   The height or depth of the line pattern. Affects the prominence of the modulation in millimeters.
 
 - **Frequency**  
@@ -203,8 +204,22 @@ The following parameters define the surface texture, path variation, and dynamic
   - `"mesh"` — Insert mesh-like distortions
 
 ### z-Plane Parameters
+The following parameters define the height profile of the printed outline. These parameters can also be found in the telegram_bot/parametershandler.py file stored in the self.z_plane dictionary for mapping them to ai scores.
 
-Reviewing...
+- **Frequency**  
+ *(integer should be 1,2 or 3)*  
+  The number of peaks on the line. *Note: on the interface numbers are correct but in the code we reverse the numbers. That is 3 in the code corresponds to only 1 peak* 
+
+- **Amplitude**  
+  *(integer)*  
+  The height of the peak. Affects the prominence of the modulation in millimeters.
+
+- **non Planar**  
+  *(boolean)*  
+  Determines whether the the frequency and amplitude of the z-plane have any effect on the print. 
+  **Supported values:**  
+  - `"no"` — No elvevation in the print, height within a layer stays the same.  
+  - `"yes"` — height within a layer can vary according to the frequency and amplitude values.
 
 ### Example 1
 <img src="doc_images/ex1_1.png" width="500" style="margin-right:10px;"/>

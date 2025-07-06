@@ -39,8 +39,8 @@ class Slicerhandler:
 
         i = 0
         
-        gcode.append("G1 Z" + str(height + STARTING_HEIGHT )) #+ self.params['layer_hight'] #3 for printing on the extra plate
-        gcode.append("G1 X" + str(points[0][0]) + " Y" + str(points[0][1]))
+        gcode.append("G1 Z" + str(height + STARTING_HEIGHT )) 
+        gcode.append("G1 X" + str(round(points[0][0],2)) + " Y" + str(round(points[0][1],2)))
         gcode.append("G92 E0")
         gcode.append("G1 E5 F500")
         point = []
@@ -53,15 +53,25 @@ class Slicerhandler:
             z = round(point_next[2],2)
             distance = round(pc.distance(point, point_next),4)
             # Check if the distance is below the threshold
-            if distance < max_distance:  # Example threshold: 10 units
-                gcode.append("G92 E0")
-                gcode.append(
-                    "G1 Z" + str(height + STARTING_HEIGHT + z) +
-                    " X" + str(x) +
-                    " Y" + str(y) +
-                    " E" + str(distance * self.params['extrusion_rate']) +
-                    " F" + str(self.params['feed_rate'])
-                )
+            if distance < max_distance:  # threshold for extruding material between points
+                if abs(z) > 0.01:
+                    gcode.append("G92 E0")
+                    gcode.append(
+                        "G1 Z" + str(height + STARTING_HEIGHT + z) +
+                        " X" + str(x) +
+                        " Y" + str(y) +
+                        " E" + str(distance * self.params['extrusion_rate']) +
+                        " F" + str(self.params['feed_rate'])
+                    )
+                else: #drop z coordinate if print is planar
+                    gcode.append("G92 E0")
+                    gcode.append(
+                        "G1" +
+                        " X" + str(x) +
+                        " Y" + str(y) +
+                        " E" + str(distance * self.params['extrusion_rate']) +
+                        " F" + str(self.params['feed_rate'])
+                    )
             else:
                 # Move without extrusion
                 gcode.append(
@@ -72,9 +82,8 @@ class Slicerhandler:
             i += 1
         #add extra path with no extrusion to avoid sharp turn when printing the next shape
         direction = pc.normalize(pc.vector(point,point_next))
-        x = point_next[0]+direction[0]*12
-        y = point_next[1]+direction[1]*12
-        distance = pc.distance(point_next[:2], [x, y])
+        x = round(point_next[0]+direction[0]*12,2)
+        y = round(point_next[1]+direction[1]*12,2)
         gcode.append(
             "G1 X" + str(x) +
             " Y" + str(y) +
@@ -101,14 +110,6 @@ class Slicerhandler:
 
         gcode = []
         gcode.append("G90 ")
-        #gcode.append("M82 ")
-        # the following 2 lines are the likely the brim extrustion commands to get the material flowing
-            #gcode.append("G1 X0 Y0 Z" + str(3)) #+ self.params['layer_hight']) alternative plate -12 #2.5 for printing on the extra plate
-            #gcode.append("G1 X0 E1 F1000")
-            #gcode.append("G90")
-            #gcode.append("G92 E0")
-        # gcode.append("G1 E-4")
-
         # We are starting a new GCode File for testing
         with open("output_gcode_file.gcode", "w") as file:
             file.write("\n".join(gcode))
@@ -124,7 +125,6 @@ class Slicerhandler:
         gcode.append("G91")
         gcode.append("G1 Z10 E-15")
         gcode.append("G90")
-        # gcode.append("G28 X Y")
         gcode.append("G28")
 
         # Write last GCode layer to the GCode File
