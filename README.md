@@ -105,8 +105,7 @@ if location_category == "urban":
 ```
 
 ### Fine-tune the Model with Scoring Examples
-
-Reviewing...
+At the moment no integrated in the code base. The process would be similar to training the chat bot behaviour but instead of using the DPO (direct preference optimization) method I would suggest to use the reinforcement fine-tuning method.
 
 # Printing Parameters
 - **Starting height:** Can be set in the `slicerhandler.py` file at the very top.
@@ -222,8 +221,19 @@ The following parameters define the height profile of the printed outline. These
   - `"yes"` — height within a layer can vary according to the frequency and amplitude values.
 
 ### Example 1
-<img src="doc_images/ex1_1.png" width="500" style="margin-right:10px;"/>
-<img src="doc_images/ex1_2.png" width="500"/>
+<table>
+  <tr>
+    <td>
+      <img src="doc_images/ex1_1.png" width="250" style="margin-right:10px;"/>
+      <br/>
+      <img src="doc_images/ex1_2.png" width="250"/>
+    </td>
+    <td style="vertical-align:top; padding-left:20px;">
+      <b>Description:</b><br/>
+      This example demonstrates how the AI-mapped parameters affect the printed geometry. The first image shows the initial layer, while the second image shows the completed object with a rectangular line pattern and increased amplitude.
+    </td>
+  </tr>
+</table>
 
 # Telegram Bot
 To improve the behavior of the chatbot, a useful technique is to fine-tune an already trained model like GPT-4o. See: https://platform.openai.com/docs/guides/fine-tuning  
