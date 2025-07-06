@@ -224,13 +224,12 @@ The following parameters define the height profile of the printed outline. These
 <table>
   <tr>
     <td>
-      <img src="doc_images/ex1_1.png" width="500" style="margin-right:10px;"/>
+      <img src="doc_images/ex1_1.png" width="600" style="margin-right:10px;"/>
       <br/>
-      <img src="doc_images/ex1_2.png" width="500"/>
+      <img src="doc_images/ex1_2.png" width="600"/>
     </td>
     <td style="vertical-align:top; padding-left:20px;">
-      <b>Description:</b><br/>
-      This example demonstrates how the AI-mapped parameters affect the printed geometry. The first image shows the initial layer, while the second image shows the completed object with a rectangular line pattern and increased amplitude.
+      This example demonstrates a non-planar print with (z-plane)frequency of 2. Furthermore the outline also has a rectangluar applied to it for 50% of the shape.
     </td>
   </tr>
 </table>
