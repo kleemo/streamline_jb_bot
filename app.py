@@ -35,10 +35,9 @@ parameter_handler = telegram_bot.parametershandler.ParametersHandler("straight")
 
 layer = 0
 height = 0
-height_max = 5000
+height_max = 5000 #set the maximum height of the object to print (includes starting height)
 printing = False
 toggle_state = False
-update_rate = 1
 simulation_time = 2
 outline = True
 
@@ -107,9 +106,10 @@ def telegram_webhook():
             
             send_message_to_telegram(chat_id, transcript)
         #send updated parameters to the frontend to show on the interface
-        shape_parameters , line_parameters = parameter_handler.get_parameters()
+        shape_parameters , line_parameters, z_plane_parameters = parameter_handler.get_parameters()
         socketio.emit('update_shape_options',shape_parameters)
         socketio.emit('update_line_options',line_parameters)
+        socketio.emit('update_z_plane_options',z_plane_parameters)
         socketio.emit('update_ai_scores',parameter_handler.ai_scores)
 
         
@@ -120,13 +120,11 @@ def telegram_webhook():
 def hello():
     print("hello socket")
     emit('layer', { 'layer': layer })
-    global update_rate
     global simulation_time
     emit('slicer_options', {
         'extrusion_rate': slicer_handler.params['extrusion_rate'],
         'feed_rate': slicer_handler.params['feed_rate'],
         'layer_hight': slicer_handler.params['layer_hight'],
-        'update_rate': update_rate,
         'simulation_time': simulation_time,
     })
 
@@ -166,8 +164,7 @@ def slicer_options(data):
     slicer_handler.params['extrusion_rate'] = data["extrusion_rate"]
     slicer_handler.params['feed_rate'] = data["feed_rate"]
     slicer_handler.params['layer_hight'] = data["layer_hight"]
-    global update_rate, simulation_time
-    update_rate = data['update_rate']
+    global simulation_time
     simulation_time = data['simulation_time']
 
 
@@ -220,9 +217,9 @@ def line_options(data):
     parameter_handler.line_options["irregularity"] = data["irregularity"]
     parameter_handler.line_options["glitch"] = data["glitch"]
 
-    shape_param, line_param = parameter_handler.get_parameters()
+    shape_param, line_param, z_plane_parameters = parameter_handler.get_parameters()
     global layer
-    shape_handler.update_parameters(shape_param,line_param,parameter_handler.z_plane,layer)
+    shape_handler.update_parameters(shape_param,line_param, z_plane_parameters,layer)
     displacement = [list(pt) for pt in shape_handler.simulate_line_pattern()]
     emit('line_preview',{'line_displacement':displacement})
     print("line_options: ", data)   
@@ -230,9 +227,9 @@ def line_options(data):
 @socketio.on('z_plane')
 def z_plane(data):
     parameter_handler.z_plane = data
-    shape_param, line_param = parameter_handler.get_parameters()
+    shape_param, line_param, z_plane_parameters = parameter_handler.get_parameters()
     global layer
-    shape_handler.update_parameters(shape_param,line_param,parameter_handler.z_plane,layer)
+    shape_handler.update_parameters(shape_param,line_param, z_plane_parameters,layer)
     displacement = shape_handler.simulate_z_displacement()
     emit('z_plane_preview',{'displacement':displacement})
     print("z_plane: ", data)  
@@ -351,25 +348,24 @@ def start_print():
     global layer
     global height
     global height_max
-    global update_rate, simulation_time
+    global simulation_time
     
     global shape_handler
     
 
     while printing:
 
-        #Set Machine Height
+        #check conditions for continouing to print
         while(height >= height_max ):
-            print("loop height = " + str(height))
-            time.sleep(2)
-            #emit('printer_pause_resume')
-            #printing = False
-
+            print("height reached max at: " + str(height))
+            time.sleep(5)
+        while len(shape_handler.current_diameter) <=0:
+            print("all center points removed")
+            time.sleep(5)
         # create the shape points
         #fetch parameters
-            
-        shape_parameter, line_parameters = parameter_handler.get_parameters()
-        shape_handler.update_parameters(shape_parameter, line_parameters,parameter_handler.z_plane, layer)
+        shape_parameter, line_parameters, z_plane_parameters = parameter_handler.get_parameters()
+        shape_handler.update_parameters(shape_parameter, line_parameters, z_plane_parameters, layer)
         shapes = shape_handler.generate_next_layer(layer)#shape_handler.simpple_rectangle()#shape_handler.simple_circle()#shape_handler.simpple_rectangle()#shape_handler.generate_next_layer(layer)
 
         # print outline and infill of each shape
@@ -399,19 +395,23 @@ def start_print():
         layer = layer + 1
         height = height + slicer_handler.params['layer_hight']
         emit('layer', {'layer': layer}) #"We are on Layer" – Output
-        if layer % update_rate == 0:
-            center_points = [list(pt) for pt in shape_handler.shape_options["center_points"]]
-            unzipped_x, unzipped_y = map(list, zip(*shape_handler.current_diameter))
-            emit('update_current_shape',{'center_points':center_points,'diameter_x': unzipped_x, 'diameter_y': unzipped_y})
+        #update ui view
+        center_points = [list(pt) for pt in shape_handler.shape_options["center_points"]]
+        unzipped_x, unzipped_y = map(list, zip(*shape_handler.current_diameter))
+        emit('update_current_shape',{'center_points':center_points,'diameter_x': unzipped_x, 'diameter_y': unzipped_y})
         time.sleep(simulation_time)  # Wait 10 seconds for simulation
-            
-            
 
+        #check and remove any center point that is too narrow
+        for i in reversed(range(len(shape_handler.current_diameter))):
+            diameter = shape_handler.current_diameter[i]
+            if diameter[0] <= 2 or diameter[1] <= 2:
+                emit('remove_center_point', {'index': i})
+                time.sleep(5)
             
         print("height = " + str(height))
         print("layer = " + str(layer))
-        while shape_handler.current_diameter[0][0] < 5 or shape_handler.current_diameter[0][1] < 5:
-            print("diameter too narrow")
+        while len(shape_handler.current_diameter) <=0:
+            print("all diameters too narrow")
             time.sleep(5)
     #print_handler.send(slicer_handler.end())
 

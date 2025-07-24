@@ -407,6 +407,12 @@ class Shapehandler:
             for j in range(len(points)):
                 points[j] = pc.rotate(points[j],pc.point(self.shape_options["center_points"][i][0],self.shape_options["center_points"][i][1],0) , self.current_rotation)
                 points[j][2] = z_displacement[j%len(z_displacement)]
+            # Check if the current diameter is very small
+            if (
+                self.current_diameter[i][0] < 10 or self.current_diameter[i][1] < 10
+            ) and len(points) > 2:
+                # Remove every second point
+                shapes[i] = [pt for idx, pt in enumerate(points) if idx % 2 == 0]
             
         self.previous_shapes = shapes
         return shapes

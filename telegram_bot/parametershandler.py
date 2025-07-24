@@ -48,7 +48,6 @@ class ParametersHandler():
         self.accumulated_chat = ""
         self.accumulated_user_text = ""
         self.num_input = 0
-        self.inactive = False
         self.feature_vector = []
         self.filling = 0
         self.clip_fill_start = 0
@@ -94,12 +93,18 @@ class ParametersHandler():
         Returns the current shape and line parameters.
 
         Returns:
-            tuple: (shape_parameters, line_parameters)
+            tuple: (shape_parameters, line_parameters, z_plane_parameters)
         """
         shape_parameters =  self.shape_options
         line_parameters = self.line_options
+<<<<<<< HEAD
         return shape_parameters , line_parameters
           
+=======
+        z_plane_parameters = self.z_plane
+        return shape_parameters , line_parameters, z_plane_parameters
+        
+>>>>>>> upstream/main
     def set_parameters_textInput(self, user_text = None):
         """
         Updates parameters based on user text input using AI model scores.

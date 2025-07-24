@@ -46,6 +46,10 @@ socket.on('update_line_options', (data) => {
     Object.assign(vm.line_options, data);
 });
 
+socket.on('update_z_plane_options',(data) =>{
+    Object.assign(vm.z_plane, data);
+});
+
 socket.on('connected', (data) => {
     vm.connected = data.connected
 });
@@ -61,7 +65,10 @@ socket.on('z_plane_preview', (data) => {
 socket.on('webhook_url', (data) => {
     vm.webhookUrl = data.url
 });
-
+socket.on('remove_center_point',(data) =>{
+    vm.selected_index = data['index'];
+    vm.remove_center_point();
+});
 // Listen for the trigger_print event and call the print function
 socket.on('trigger_print', function() {
     vm.print();

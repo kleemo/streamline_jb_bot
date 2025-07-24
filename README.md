@@ -105,14 +105,14 @@ if location_category == "urban":
 ```
 
 ### Fine-tune the Model with Scoring Examples
-
-Reviewing...
+At the moment no integrated in the code base. The process would be similar to training the chat bot behaviour but instead of using the DPO (direct preference optimization) method I would suggest to use the reinforcement fine-tuning method.
 
 # Printing Parameters
 - **Starting height:** Can be set in the `slicerhandler.py` file at the very top.
 - **E** (often referred to as extrusion rate) controls how much filament is extruded. The standard value is around 0.8; for wetter clay or when the pressure is high, use slightly higher values.
 - **F** (often referred to as feed rate) controls how fast the x, y move happens, and consequently also how fast the extrusion happens. Here as well, increase slightly when the clay is wetter. A good starting value is around 1200.
 - The **New/Home** button brings the printer head back to its home position and resets the layer count to 0, but does not reset any other values.
+- **Max height:** Can be set in the `app.py` file at the very top. Determines the maximal height of the object to print. If the specified height is reached the printer stops. *Note: the maximal height also includes the starting heigth*
 
 # Geometry Taxonomy
 *Note: Also see the Google Sheet for reference.*
@@ -172,7 +172,7 @@ The following parameters define the surface texture, path variation, and dynamic
   - `"nobs"` — Small weaved protrusions (knobs)
 
 - **Amplitude**  
-  *(float)*  
+  *(integer)*  
   The height or depth of the line pattern. Affects the prominence of the modulation in millimeters.
 
 - **Frequency**  
@@ -203,12 +203,50 @@ The following parameters define the surface texture, path variation, and dynamic
   - `"mesh"` — Insert mesh-like distortions
 
 ### z-Plane Parameters
+The following parameters define the height profile of the printed outline. These parameters can also be found in the telegram_bot/parametershandler.py file stored in the self.z_plane dictionary for mapping them to ai scores.
 
-Reviewing...
+- **Frequency**  
+ *(integer should be 1,2 or 3)*  
+  The number of peaks on the line. *Note: on the interface numbers are correct but in the code we reverse the numbers. That is 3 in the code corresponds to only 1 peak* 
+
+- **Amplitude**  
+  *(integer)*  
+  The height of the peak. Affects the prominence of the modulation in millimeters.
+
+- **non Planar**  
+  *(boolean)*  
+  Determines whether the the frequency and amplitude of the z-plane have any effect on the print. 
+  **Supported values:**  
+  - `"no"` — No elveation in the print, height within a layer stays the same.  
+  - `"yes"` — height within a layer can vary according to the frequency and amplitude values.
 
 ### Example 1
-<img src="doc_images/ex1_1.png" width="500" style="margin-right:10px;"/>
-<img src="doc_images/ex1_2.png" width="500"/>
+<table>
+  <tr>
+    <td>
+      <img src="doc_images/ex1_1.png" width="600" style="margin-right:10px;"/>
+      <br/>
+      <img src="doc_images/ex1_2.png" width="600"/>
+    </td>
+    <td style="vertical-align:top; padding-left:20px;">
+      This example demonstrates a non-planar print with (z-plane)frequency of 2. Furthermore the outline also has a rectangluar applied to it for 50% of the shape.
+    </td>
+  </tr>
+</table>
+
+### Example 2
+<table>
+  <tr>
+    <td>
+      <img src="doc_images/ex2_1.png" width="600" style="margin-right:10px;"/>
+      <br/>
+      <img src="doc_images/ex2_2.png" width="600"/>
+    </td>
+    <td style="vertical-align:top; padding-left:20px;">
+      This example demonstrates a free-hand base shape. The pattern applied to the outline is a loop with a irregularity. The center points shift slighly with one of them norrowing over time.
+    </td>
+  </tr>
+</table>
 
 # Telegram Bot
 To improve the behavior of the chatbot, a useful technique is to fine-tune an already trained model like GPT-4o. See: https://platform.openai.com/docs/guides/fine-tuning  
@@ -235,5 +273,7 @@ This codebase includes a custom script to format your own examples into the requ
 
 # Future Work
 ### Multiple Users
+At the moment, the application does not differentiate between different users sending messages through the chatbot. All inputs are processed the same way and contribute towards the printing outcome.
 
 ### Storing Outcomes for Model Training
+The dynamically generated G-code is stored in the `output_gcode_file.gcode` file. Currently, the application does not write the chatbot history to a file. However, the G-code could potentially be stored together with screenshots of the Telegram chat to better understand how the chat conversation relates to the printing outcome.

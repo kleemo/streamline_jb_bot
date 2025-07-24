@@ -23,7 +23,6 @@ const vm = new Vue({ // Again, vm is our Vue instance's name for consistency.
             extrusion_rate: 0,
             feed_rate: 0,
             layer_hight: 0.75,
-            update_rate: 1,
             simulation_time: 2,
         },
         shape_options: {
